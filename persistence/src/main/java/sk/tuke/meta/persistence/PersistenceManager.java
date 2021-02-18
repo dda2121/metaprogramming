@@ -19,14 +19,6 @@ public interface PersistenceManager {
     void createTables();
 
     /**
-     * Get all entities of specified type.
-     *
-     * @param clazz entity class
-     * @return a list of all entities stored in the database.
-     */
-    <T> List<T> getAll(Class<T> clazz);
-
-    /**
      * Get a specific entity based on the primary key.
      *
      * @param type entity class
@@ -34,6 +26,14 @@ public interface PersistenceManager {
      * @return the found entity or <code>null</code> if the entity does not exist
      */
     <T> T get(Class<T> type, long id);
+
+    /**
+     * Get all entities of specified type.
+     *
+     * @param clazz entity class
+     * @return a list of all entities stored in the database.
+     */
+    <T> List<T> getAll(Class<T> type);
 
     /**
      * Get entities based on any field value.

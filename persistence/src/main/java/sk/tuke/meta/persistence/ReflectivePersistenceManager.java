@@ -6,7 +6,7 @@ import java.util.List;
 
 public class ReflectivePersistenceManager implements PersistenceManager {
 
-    public ReflectivePersistenceManager(Connection connection, Class<?>... entities) {
+    public ReflectivePersistenceManager(Connection connection, Class<?>... types) {
     }
 
     @Override
@@ -14,13 +14,13 @@ public class ReflectivePersistenceManager implements PersistenceManager {
     }
 
     @Override
-    public <T> List<T> getAll(Class<T> clazz) {
-        return Collections.emptyList();
+    public <T> T get(Class<T> type, long id) {
+        return null;
     }
 
     @Override
-    public <T> T get(Class<T> type, long id) {
-        return null;
+    public <T> List<T> getAll(Class<T> type) {
+        return Collections.emptyList();
     }
 
     @Override
