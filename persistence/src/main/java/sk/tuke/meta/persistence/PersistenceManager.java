@@ -33,7 +33,7 @@ public interface PersistenceManager {
      * @param id   primary key (id) value
      * @return the found entity or <code>null</code> if the entity does not exist
      */
-    <T> T get(Class<T> type, int id);
+    <T> T get(Class<T> type, long id);
 
     /**
      * Get entities based on any field value.
@@ -53,7 +53,7 @@ public interface PersistenceManager {
      * @param entity the entity to be saved
      * @return the value of primary key
      */
-    int save(Object entity);
+    long save(Object entity);
 
     /**
      * Delete the entity from the database.

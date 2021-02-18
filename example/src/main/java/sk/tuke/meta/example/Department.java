@@ -6,7 +6,7 @@ import javax.persistence.Id;
 @Entity
 public class Department {
     @Id
-    private int pk;
+    private long pk;
     private String name;
     private String code;
 

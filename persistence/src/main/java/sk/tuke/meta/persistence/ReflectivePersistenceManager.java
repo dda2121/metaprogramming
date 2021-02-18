@@ -19,7 +19,7 @@ public class ReflectivePersistenceManager implements PersistenceManager {
     }
 
     @Override
-    public <T> T get(Class<T> type, int id) {
+    public <T> T get(Class<T> type, long id) {
         return null;
     }
 
@@ -29,7 +29,7 @@ public class ReflectivePersistenceManager implements PersistenceManager {
     }
 
     @Override
-    public int save(Object entity) {
+    public long save(Object entity) {
         return 0;
     }
 

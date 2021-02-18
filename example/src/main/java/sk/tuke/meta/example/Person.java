@@ -7,7 +7,7 @@ import javax.persistence.ManyToOne;
 @Entity
 public class Person {
     @Id
-    private int id;
+    private long id;
     private String surname;
     private String name;
     private int age;
@@ -48,7 +48,7 @@ public class Person {
         this.age = age;
     }
 
-    public int getId() {
+    public long getId() {
         return id;
     }
 
