@@ -1,4 +1,13 @@
+# Idea
 /.idea
-target
 *.iml
+
+# Maven
+target
+
+# Database
 *.db
+
+# Common files
+.DS_Store
+*~
