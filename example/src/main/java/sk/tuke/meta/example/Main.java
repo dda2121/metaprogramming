@@ -17,7 +17,7 @@ public class Main {
         PersistenceManager manager = new ReflectivePersistenceManager(
                 conn, Person.class, Department.class);
 
-        initDatabase(manager);
+        manager.createTables();
 
         Department development = new Department("Development", "DVLP");
         Department marketing = new Department("Marketing", "MARK");
@@ -40,12 +40,5 @@ public class Main {
             System.out.println("  " + person.getDepartment());
         }
         conn.close();
-    }
-
-    private static void initDatabase(PersistenceManager manager) {
-        var dbFile = new File(DB_PATH);
-        if (!dbFile.exists()) {
-            manager.createTables();
-        }
     }
 }
