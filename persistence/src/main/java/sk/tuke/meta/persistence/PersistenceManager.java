@@ -1,5 +1,8 @@
 package sk.tuke.meta.persistence;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import java.util.List;
 
 /**
@@ -30,7 +33,7 @@ public interface PersistenceManager {
     /**
      * Get all entities of specified type.
      *
-     * @param clazz entity class
+     * @param type entity class
      * @return a list of all entities stored in the database.
      */
     <T> List<T> getAll(Class<T> type);
