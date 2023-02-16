@@ -3,6 +3,7 @@ package sk.tuke.meta.persistence;
 import java.sql.Connection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 public class ReflectivePersistenceManager implements PersistenceManager {
 
@@ -14,8 +15,8 @@ public class ReflectivePersistenceManager implements PersistenceManager {
     }
 
     @Override
-    public <T> T get(Class<T> type, long id) {
-        return null;
+    public <T> Optional<T> get(Class<T> type, long id) {
+        return Optional.empty();
     }
 
     @Override

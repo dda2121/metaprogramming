@@ -1,6 +1,7 @@
 package sk.tuke.meta.persistence;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * PersistenceManager allows to persist a set of entities into a database.
@@ -23,9 +24,9 @@ public interface PersistenceManager {
      *
      * @param type entity class
      * @param id   primary key (id) value
-     * @return the found entity or <code>null</code> if the entity does not exist
+     * @return the found entity or <code>Optional.empty()</code> if the entity does not exist
      */
-    <T> T get(Class<T> type, long id);
+    <T> Optional<T> get(Class<T> type, long id);
 
     /**
      * Get all entities of specified type.
@@ -56,7 +57,7 @@ public interface PersistenceManager {
     long save(Object entity);
 
     /**
-     * Delete the entity from the database.
+     * Delete the entity from the database, based on the primary key.
      *
      * @param entity the entity to be deleted
      */
