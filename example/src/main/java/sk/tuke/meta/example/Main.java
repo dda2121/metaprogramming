@@ -3,10 +3,10 @@ package sk.tuke.meta.example;
 import sk.tuke.meta.persistence.PersistenceManager;
 import sk.tuke.meta.persistence.ReflectivePersistenceManager;
 
-import java.io.File;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.util.List;
+import java.util.Optional;
 
 public class Main {
     public static final String DB_PATH = "test.db";
@@ -18,26 +18,25 @@ public class Main {
 
         manager.createTables(Person.class, Department.class);
 
+//        exampleOperations(manager);
+
+        conn.close();
+    }
+
+    private static void exampleOperations(PersistenceManager manager) {
         Department development = new Department("Development", "DVLP");
-        Department marketing = new Department("Marketing", "MARK");
-        Department operations = new Department("Operations", "OPRS");
+        manager.save(development);
 
         Person hrasko = new Person("Janko", "Hrasko", 30);
         hrasko.setDepartment(development);
-        Person mrkvicka = new Person("Jozko", "Mrkvicka", 25);
-        mrkvicka.setDepartment(development);
-        Person novak = new Person("Jan", "Novak", 45);
-        novak.setDepartment(marketing);
-
         manager.save(hrasko);
-        manager.save(mrkvicka);
-        manager.save(novak);
 
         List<Person> persons = manager.getAll(Person.class);
         for (Person person : persons) {
             System.out.println(person);
             System.out.println("  " + person.getDepartment());
         }
-        conn.close();
+        Optional<Department> anotherDepartment = manager.get(Department.class, 100);
+        System.out.println(anotherDepartment.isPresent());
     }
 }
