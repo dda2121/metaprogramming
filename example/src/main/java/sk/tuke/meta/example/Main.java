@@ -14,10 +14,9 @@ public class Main {
     public static void main(String[] args) throws Exception {
         Connection conn = DriverManager.getConnection("jdbc:sqlite:" + DB_PATH);
 
-        PersistenceManager manager = new ReflectivePersistenceManager(
-                conn, Person.class, Department.class);
+        PersistenceManager manager = new ReflectivePersistenceManager(conn);
 
-        manager.createTables();
+        manager.createTables(Person.class, Department.class);
 
         Department development = new Department("Development", "DVLP");
         Department marketing = new Department("Marketing", "MARK");

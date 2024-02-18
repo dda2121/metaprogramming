@@ -1,12 +1,7 @@
 package sk.tuke.meta.example;
 
-import javax.persistence.Entity;
-import javax.persistence.Id;
-
-@Entity
 public class Department {
-    @Id
-    private long pk;
+    private long id;
     private String name;
     private String code;
 
@@ -16,6 +11,10 @@ public class Department {
     public Department(String name, String code) {
         this.name = name;
         this.code = code;
+    }
+
+    public long getId() {
+        return id;
     }
 
     public String getName() {
@@ -35,6 +34,6 @@ public class Department {
     }
 
     public String toString() {
-        return String.format("Department %d: %s (%s)", pk, name, code);
+        return String.format("Department %d: %s (%s)", id, name, code);
     }
 }

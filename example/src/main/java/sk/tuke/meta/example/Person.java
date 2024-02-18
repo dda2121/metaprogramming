@@ -1,19 +1,15 @@
 package sk.tuke.meta.example;
 
-import javax.persistence.Entity;
-import javax.persistence.Id;
-import javax.persistence.ManyToOne;
-
-@Entity
 public class Person {
-    @Id
     private long id;
     private String surname;
     private String name;
     private int age;
 
-    @ManyToOne
     private Department department;
+
+    public Person() {
+    }
 
     public Person(String surname, String name, int age) {
         this.surname = surname;
@@ -21,7 +17,8 @@ public class Person {
         this.age = age;
     }
 
-    public Person() {
+    public long getId() {
+        return id;
     }
 
     public String getSurname() {
@@ -47,11 +44,6 @@ public class Person {
     public void setAge(int age) {
         this.age = age;
     }
-
-    public long getId() {
-        return id;
-    }
-
 
     public Department getDepartment() {
         return department;

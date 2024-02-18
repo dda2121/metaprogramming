@@ -7,11 +7,11 @@ import java.util.Optional;
 
 public class ReflectivePersistenceManager implements PersistenceManager {
 
-    public ReflectivePersistenceManager(Connection connection, Class<?>... types) {
+    public ReflectivePersistenceManager(Connection connection) {
     }
 
     @Override
-    public void createTables() {
+    public void createTables(Class<?>... types) {
     }
 
     @Override
@@ -25,13 +25,7 @@ public class ReflectivePersistenceManager implements PersistenceManager {
     }
 
     @Override
-    public <T> List<T> getBy(Class<T> type, String fieldName, Object value) {
-        return Collections.emptyList();
-    }
-
-    @Override
-    public long save(Object entity) {
-        return 0;
+    public void save(Object entity) {
     }
 
     @Override
