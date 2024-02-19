@@ -8,6 +8,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
+import static sk.tuke.meta.persistence.util.SQLUtil.typeToSQL;
+import static sk.tuke.meta.persistence.util.Util.getClassNameWithoutPackage;
+
+
 public class ReflectivePersistenceManager implements PersistenceManager {
 
     private Connection connection;
@@ -31,15 +35,22 @@ public class ReflectivePersistenceManager implements PersistenceManager {
         }
     }
 
-    private String getClassNameWithoutPackage(Class<?> c) {
-        String fullClassName = c.getName();
-        int lastDotIndex = fullClassName.lastIndexOf('.');
+    @Override
+    public <T> Optional<T> get(Class<T> type, long id) {
+        return Optional.empty();
+    }
 
-        if (lastDotIndex == -1) {
-            return fullClassName;
-        } else {
-            return fullClassName.substring(lastDotIndex + 1);
-        }
+    @Override
+    public <T> List<T> getAll(Class<T> type) {
+        return Collections.emptyList();
+    }
+
+    @Override
+    public void save(Object entity) {
+    }
+
+    @Override
+    public void delete(Object entity) {
     }
 
     private String getTableScript(Field[] fields) {
@@ -59,39 +70,5 @@ public class ReflectivePersistenceManager implements PersistenceManager {
         }
         columns.append(")");
         return columns.toString();
-    }
-
-    private String typeToSQL(Class c) {
-        if (c.equals(long.class) || c.equals(int.class)) {
-            return "INT";
-        } else if (c.equals(double.class) || c.equals(float.class)) {
-            return "DOUBLE";
-        } else if (c.equals(char.class)) {
-            return "CHAR";
-        } else if (c.equals(String.class)) {
-            return "VARCHAR(255)";
-        } else if (c.equals(boolean.class)) {
-            return "BOOLEAN";
-        } else {
-            return "INT";
-        }
-    }
-
-    @Override
-    public <T> Optional<T> get(Class<T> type, long id) {
-        return Optional.empty();
-    }
-
-    @Override
-    public <T> List<T> getAll(Class<T> type) {
-        return Collections.emptyList();
-    }
-
-    @Override
-    public void save(Object entity) {
-    }
-
-    @Override
-    public void delete(Object entity) {
     }
 }
