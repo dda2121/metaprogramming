@@ -22,7 +22,6 @@ public class ReflectivePersistenceManager implements PersistenceManager {
             Field[] fields = c.getDeclaredFields();
             String query = "CREATE TABLE IF NOT EXISTS " + getClassNameWithoutPackage(c).toLowerCase()
                     + getTableScript(fields);
-            System.out.println(query);
             try {
                 Statement statement = connection.createStatement();
                 statement.execute(query);
@@ -44,31 +43,35 @@ public class ReflectivePersistenceManager implements PersistenceManager {
     }
 
     private String getTableScript(Field[] fields) {
-        String columns = "(";
+        StringBuilder columns = new StringBuilder("(");
         for (Field f: fields) {
             f.setAccessible(true);
-            columns += f.getName() + " ";
-            columns += typeToSQL(f.getType());
+            columns.append(f.getName()).append(" ");
+            columns.append(typeToSQL(f.getType()));
             if (f.getName().equals("id")) {
-                columns += " PRIMARY KEY,";
+                columns.append(" PRIMARY KEY,");
             } else {
-                columns += ",";
+                columns.append(",");
             }
         }
-        if (columns.endsWith(",")) {
-            columns = columns.substring(0, columns.length() - 1);
+        if (columns.toString().endsWith(",")) {
+            columns = new StringBuilder(columns.substring(0, columns.length() - 1));
         }
-        columns += ")";
-        return columns;
+        columns.append(")");
+        return columns.toString();
     }
 
     private String typeToSQL(Class c) {
-        if (c.equals(long.class)) {
+        if (c.equals(long.class) || c.equals(int.class)) {
             return "INT";
-        } else if (c.equals(int.class)) {
-            return "INT";
+        } else if (c.equals(double.class) || c.equals(float.class)) {
+            return "DOUBLE";
+        } else if (c.equals(char.class)) {
+            return "CHAR";
         } else if (c.equals(String.class)) {
             return "VARCHAR(255)";
+        } else if (c.equals(boolean.class)) {
+            return "BOOLEAN";
         } else {
             return "INT";
         }
