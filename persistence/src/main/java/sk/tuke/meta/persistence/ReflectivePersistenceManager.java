@@ -1,5 +1,8 @@
 package sk.tuke.meta.persistence;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.lang.reflect.Field;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -14,6 +17,8 @@ import static sk.tuke.meta.persistence.util.Util.getClassNameWithoutPackage;
 
 public class ReflectivePersistenceManager implements PersistenceManager {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(ReflectivePersistenceManager.class.getName());
+
     private Connection connection;
 
     public ReflectivePersistenceManager(Connection connection) {
@@ -24,13 +29,14 @@ public class ReflectivePersistenceManager implements PersistenceManager {
     public void createTables(Class<?>... types) {
         for (Class c: types) {
             Field[] fields = c.getDeclaredFields();
-            String query = "CREATE TABLE IF NOT EXISTS " + getClassNameWithoutPackage(c).toLowerCase()
-                    + getTableScript(fields);
+            String tableName = getClassNameWithoutPackage(c).toLowerCase();
+            String query = "CREATE TABLE IF NOT EXISTS " + tableName + getTableScript(fields);
             try {
                 Statement statement = connection.createStatement();
                 statement.execute(query);
+                LOGGER.info("Table '" + tableName + "' was successfully created.");
             } catch (SQLException e) {
-                throw new RuntimeException(e);
+                LOGGER.error("Error occurred when creating table " + tableName + ": " + e.getMessage());
             }
         }
     }
