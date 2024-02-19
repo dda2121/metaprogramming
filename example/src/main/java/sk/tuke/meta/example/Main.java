@@ -18,7 +18,7 @@ public class Main {
 
         manager.createTables(Person.class, Department.class);
 
-//        exampleOperations(manager);
+        exampleOperations(manager);
 
         conn.close();
     }
