@@ -157,6 +157,48 @@ class ReflectivePersistenceManagerTest {
         assertEquals(2, people.size());
     }
 
+    @Test
+    void deleteNotExistingDepartment() {
+        Department department = new Department("ABC", "CDE");
+        int before = manager.getAll(Department.class).size();
+        manager.delete(department);
+        int after = manager.getAll(Department.class).size();
+        assertEquals(before, after);
+    }
+
+    @Test
+    void deleteDepartment() {
+        Department department = new Department("ABC", "CDE");
+        manager.save(department);
+        assertEquals(1, manager.getAll(Department.class).size());
+        manager.delete(department);
+        assertEquals(0, manager.getAll(Department.class).size());
+    }
+
+    @Test
+    void deleteNotExistingPerson() {
+        Department department = new Department("ABC", "CDE");
+        manager.save(department);
+        Person person = new Person("Name", "Surname", 25);
+        person.setDepartment(department);
+        int before = manager.getAll(Person.class).size();
+        manager.delete(person);
+        int after = manager.getAll(Person.class).size();
+        assertEquals(before, after);
+    }
+
+    @Test
+    void deletePerson() {
+        Department department = new Department("ABC", "CDE");
+        manager.save(department);
+        Person person = new Person("Name", "Surname", 25);
+        person.setDepartment(department);
+        manager.save(person);
+        assertEquals(1, manager.getAll(Person.class).size());
+        manager.delete(person);
+        assertEquals(0, manager.getAll(Person.class).size());
+    }
+
     void assertSqlHasResult(String sql) throws SQLException {
         var statement = connection.prepareStatement(sql);
         assertTrue(statement.executeQuery().next());

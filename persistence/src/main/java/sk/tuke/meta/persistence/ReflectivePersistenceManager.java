@@ -14,6 +14,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.*;
 
+import static sk.tuke.meta.persistence.util.SQLUtil.getObjectIdValue;
 import static sk.tuke.meta.persistence.util.SQLUtil.typeToSQL;
 import static sk.tuke.meta.persistence.util.Util.castToString;
 import static sk.tuke.meta.persistence.util.Util.getClassNameWithoutPackage;
@@ -123,6 +124,34 @@ public class ReflectivePersistenceManager implements PersistenceManager {
 
     @Override
     public void delete(Object entity) {
+        String className = getClassNameWithoutPackage(entity.getClass());
+        String id;
+        try {
+            id = getObjectIdValue(entity);
+            if (id == null || id.equals("0")) {
+                LOGGER.error("Object with class type '" + className +
+                        "' has not set up 'id' field. Not proceeding with deleting.");
+                return;
+            }
+        } catch (NoSuchFieldException e) {
+            LOGGER.error("Provided object with class type '" + className + "' doesn't contain 'id' field.");
+            return;
+        } catch (IllegalAccessException e) {
+            LOGGER.error("Error occurred when accessing 'id' field of an object with class type '" + className);
+            return;
+        }
+
+        // TODO id can be other type then long
+        String query = "DELETE FROM " + className.toLowerCase() + " WHERE id = " + id;
+        try {
+            Statement statement = connection.createStatement();
+            statement.execute(query);
+        } catch (SQLException e) {
+            LOGGER.error("Error occurred when deleting raw from a table " + className.toLowerCase() + "': "
+                    + e.getMessage());
+            return;
+        }
+        LOGGER.info("Raw was successfully deleted from '" + className.toLowerCase() + "' table");
     }
 
     private <T> Optional<T> processResultSet(Class<T> type, ResultSet rs) {
