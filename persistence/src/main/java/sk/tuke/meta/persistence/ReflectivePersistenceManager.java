@@ -69,6 +69,62 @@ public class ReflectivePersistenceManager implements PersistenceManager {
         return Optional.empty();
     }
 
+    @Override
+    public <T> List<T> getAll(Class<T> type) {
+        List<T> result = new ArrayList<>();
+        String query = "SELECT * FROM " + getClassNameWithoutPackage(type).toLowerCase();
+        ResultSet rs;
+        try {
+            Statement statement = connection.createStatement();
+            rs = statement.executeQuery(query);
+        } catch (SQLException e) {
+            LOGGER.error("Error occurred when retrieving objects from a database with class type '" +
+                    getClassNameWithoutPackage(type) + "'.");
+            return Collections.emptyList();
+        }
+
+        try {
+            // TODO what if optional is empty (in what cases it can happen)
+            while (rs.next()) {
+                Optional<T> optional = processResultSet(type, rs);
+                optional.ifPresent(result::add);
+            }
+            return result;
+        } catch (SQLException e) {
+            LOGGER.error("Error occurred when processing result set of an object with class type '" +
+                    getClassNameWithoutPackage(type) + "'.");
+        }
+        return Collections.emptyList();
+    }
+
+    @Override
+    public void save(Object entity) {
+        String className = getClassNameWithoutPackage(entity.getClass());
+        Map<String, Object> values;
+        try {
+            values = getValues(entity);
+        } catch (FieldAccessException e) {
+            LOGGER.error(e.getMessage());
+            return;
+        }
+
+        if (!values.containsKey("id")) {
+            LOGGER.error("Provided object with type " + className + " doesn't contain 'id' field");
+            return;
+        }
+
+        // TODO add validation if id is not number
+        if ((Long) values.get("id") == 0) {
+            handleInsert(className, values, entity);
+        } else {
+            handleUpdate(className, values);
+        }
+    }
+
+    @Override
+    public void delete(Object entity) {
+    }
+
     private <T> Optional<T> processResultSet(Class<T> type, ResultSet rs) {
         try {
             return Optional.of(resultSetToObject(type, rs));
@@ -103,39 +159,6 @@ public class ReflectivePersistenceManager implements PersistenceManager {
         return obj;
     }
 
-    @Override
-    public <T> List<T> getAll(Class<T> type) {
-        return Collections.emptyList();
-    }
-
-    @Override
-    public void save(Object entity) {
-        String className = getClassNameWithoutPackage(entity.getClass());
-        Map<String, Object> values;
-        try {
-            values = getValues(entity);
-        } catch (FieldAccessException e) {
-            LOGGER.error(e.getMessage());
-            return;
-        }
-
-        if (!values.containsKey("id")) {
-            LOGGER.error("Provided object with type " + className + " doesn't contain 'id' field");
-            return;
-        }
-
-        // TODO add validation if id is not number
-        if ((Long) values.get("id") == 0) {
-            handleInsert(className, values, entity);
-        } else {
-            handleUpdate(className, values);
-        }
-    }
-
-    @Override
-    public void delete(Object entity) {
-    }
-
     private String getTableScript(Field[] fields) {
         StringBuilder columns = new StringBuilder("(");
         for (Field f: fields) {
@@ -161,7 +184,7 @@ public class ReflectivePersistenceManager implements PersistenceManager {
             Field idField = entity.getClass().getDeclaredField("id");
             idField.setAccessible(true);
             idField.setLong(entity, id);
-            LOGGER.info("Raw was successfully inserted into " + className.toLowerCase() + " table.");
+            LOGGER.info("Raw was successfully inserted into '" + className.toLowerCase() + "' table.");
         } catch (SQLException e) {
             LOGGER.error("Error occurred when inserting row into table '" + className.toLowerCase() + "': " + e.getMessage());
         } catch (NoSuchFieldException e) {
@@ -178,7 +201,7 @@ public class ReflectivePersistenceManager implements PersistenceManager {
     private void handleUpdate(String className, Map<String, Object> values) {
         try {
             update(className, values);
-            LOGGER.info("Raw was successfully updated in " + className.toLowerCase() + " table.");
+            LOGGER.info("Raw was successfully updated in '" + className.toLowerCase() + "' table.");
         } catch (SQLException e) {
             LOGGER.error("Error occurred when updating row in table '" + className.toLowerCase() + "': " + e.getMessage());
         } catch (MissedIdException e) {

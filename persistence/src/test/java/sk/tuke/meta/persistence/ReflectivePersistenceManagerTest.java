@@ -8,6 +8,7 @@ import sk.tuke.meta.example.Person;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -133,6 +134,27 @@ class ReflectivePersistenceManagerTest {
         assertTrue(p.isPresent());
         assertNotNull(p.get().getDepartment());
         assertEquals(p.get().getDepartment().getId(), department.getId());
+    }
+
+    @Test
+    void getAllZeroRaws() {
+        List<Person> people = manager.getAll(Person.class);
+        assertEquals(0, people.size());
+    }
+
+    @Test
+    void getAllCountRaws() {
+        Department department = new Department("ABC", "CDE");
+        manager.save(department);
+        Person person = new Person("Name", "Surname", 25);
+        person.setDepartment(department);
+        manager.save(person);
+        Person person2 = new Person("Name1", "Surname1", 30);
+        person2.setDepartment(department);
+        manager.save(person2);
+
+        List<Person> people = manager.getAll(Person.class);
+        assertEquals(2, people.size());
     }
 
     void assertSqlHasResult(String sql) throws SQLException {
