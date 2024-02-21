@@ -8,6 +8,7 @@ import sk.tuke.meta.example.Person;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -92,7 +93,49 @@ class ReflectivePersistenceManagerTest {
                 + " and name is null and surname is null and department is null and age = 0");
     }
 
-    private void assertSqlHasResult(String sql) throws SQLException {
+    @Test
+    void getExistingDepartment() {
+        Department department = new Department("ABC", "CDE");
+        manager.save(department);
+        Optional<Department> d = manager.get(Department.class, department.getId());
+        assertTrue(d.isPresent());
+    }
+
+    @Test
+    void getNotExistingDepartment() {
+        Optional<Department> d = manager.get(Department.class, 5);
+        assertTrue(d.isEmpty());
+    }
+
+    @Test
+    void getExistingPerson() {
+        Person person = new Person("Name", null, 25);
+        manager.save(person);
+        Optional<Person> p = manager.get(Person.class, person.getId());
+        assertTrue(p.isPresent());
+    }
+
+    @Test
+    void getNotExistingPerson() {
+        Optional<Person> p = manager.get(Person.class, 5);
+        assertTrue(p.isEmpty());
+    }
+
+    @Test
+    void getExistingPersonWithDepartment() {
+        Department department = new Department("ABC", "CDE");
+        manager.save(department);
+        Person person = new Person("Name", "Surname", 25);
+        person.setDepartment(department);
+        manager.save(person);
+
+        Optional<Person> p = manager.get(Person.class, person.getId());
+        assertTrue(p.isPresent());
+        assertNotNull(p.get().getDepartment());
+        assertEquals(p.get().getDepartment().getId(), department.getId());
+    }
+
+    void assertSqlHasResult(String sql) throws SQLException {
         var statement = connection.prepareStatement(sql);
         assertTrue(statement.executeQuery().next());
     }

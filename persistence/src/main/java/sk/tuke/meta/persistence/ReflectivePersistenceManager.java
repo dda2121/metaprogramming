@@ -4,8 +4,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import sk.tuke.meta.persistence.exception.FieldAccessException;
 import sk.tuke.meta.persistence.exception.MissedIdException;
+import sk.tuke.meta.persistence.util.Util;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -45,7 +47,60 @@ public class ReflectivePersistenceManager implements PersistenceManager {
 
     @Override
     public <T> Optional<T> get(Class<T> type, long id) {
+        String query = "SELECT * FROM " + getClassNameWithoutPackage(type).toLowerCase()
+                + " WHERE id = " + id;
+        ResultSet rs;
+        try {
+            Statement statement = connection.createStatement();
+            rs = statement.executeQuery(query);
+        } catch (SQLException e) {
+            LOGGER.error("Error occurred when retrieving object from a database with class type '" +
+                    getClassNameWithoutPackage(type) + "'.");
+            return Optional.empty();
+        }
+        try {
+            if (rs.next()) {
+                return processResultSet(type, rs);
+            }
+        } catch (SQLException e) {
+            LOGGER.error("Error occurred when processing result set of an object with class type '" +
+                    getClassNameWithoutPackage(type) + "'.");
+        }
         return Optional.empty();
+    }
+
+    private <T> Optional<T> processResultSet(Class<T> type, ResultSet rs) {
+        try {
+            return Optional.of(resultSetToObject(type, rs));
+        } catch (NoSuchMethodException e) {
+            LOGGER.error("Provided object with class type '" + getClassNameWithoutPackage(type) +
+                    "' doesn't contain empty constructor.");
+        } catch (InvocationTargetException e) {
+            LOGGER.error("Error occurred when creating instance of an class '" +
+                    getClassNameWithoutPackage(type) + "'.");
+        } catch (InstantiationException e) {
+            LOGGER.error("Error occurred when creating an instance of an abstract class '" +
+                    getClassNameWithoutPackage(type) + "'.");
+        } catch (IllegalAccessException e) {
+            LOGGER.error("Error occurred due to inaccessible constructor in class '" +
+                    getClassNameWithoutPackage(type) + "'.");
+        } catch (SQLException e) {
+            LOGGER.error("Error processing result set: Please check the validity of the result set " +
+                    "and the provided column label in class '" + getClassNameWithoutPackage(type) + "'.");
+        }
+        return Optional.empty();
+    }
+
+    private <T> T resultSetToObject(Class<T> type, ResultSet rs) throws NoSuchMethodException, InvocationTargetException,
+            InstantiationException, IllegalAccessException, SQLException {
+        T obj = type.getDeclaredConstructor().newInstance();
+        Field[] fields = type.getDeclaredFields();
+        for (Field f: fields) {
+            f.setAccessible(true);
+            String value = rs.getString(f.getName());
+            f.set(obj, Util.convertDataType(f.getType(), value, connection));
+        }
+        return obj;
     }
 
     @Override
