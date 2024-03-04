@@ -20,11 +20,10 @@ public class SQLUtil {
         }
     }
 
-    public static String getObjectIdValue(Object obj) throws NoSuchFieldException, IllegalAccessException {
+    public static Long getObjectIdValue(Object obj) throws NoSuchFieldException, IllegalAccessException {
         Class cls = obj.getClass();
         Field idField = cls.getDeclaredField("id");
         idField.setAccessible(true);
-        Object o = idField.get(obj);
-        return o == null ? null : o.toString();
+        return (Long) idField.get(obj);
     }
 }

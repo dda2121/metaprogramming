@@ -13,7 +13,7 @@ import java.util.*;
 
 import static sk.tuke.meta.persistence.util.SQLUtil.getObjectIdValue;
 import static sk.tuke.meta.persistence.util.SQLUtil.typeToSQL;
-import static sk.tuke.meta.persistence.util.Util.castToString;
+import static sk.tuke.meta.persistence.util.Util.castToObject;
 import static sk.tuke.meta.persistence.util.Util.getClassNameWithoutPackage;
 
 
@@ -122,10 +122,10 @@ public class ReflectivePersistenceManager implements PersistenceManager {
     @Override
     public void delete(Object entity) {
         String className = getClassNameWithoutPackage(entity.getClass());
-        String id;
+        Long id;
         try {
             id = getObjectIdValue(entity);
-            if (id == null || id.equals("0")) {
+            if (id == null || id == 0) {
                 LOGGER.error("Object with class type '" + className +
                         "' has not set up 'id' field. Not proceeding with deleting.");
                 return;
@@ -251,7 +251,7 @@ public class ReflectivePersistenceManager implements PersistenceManager {
             if (key.equals("id")) {
                 continue;
             }
-            statement.setString(i++, castToString(data.get(key)));
+            statement.setObject(i++, castToObject(data.get(key)));
         }
         int affectedRows = statement.executeUpdate();
 
@@ -278,9 +278,9 @@ public class ReflectivePersistenceManager implements PersistenceManager {
             if (key.equals("id")) {
                 continue;
             }
-            statement.setString(i++, castToString(values.get(key)));
+            statement.setObject(i++, castToObject(values.get(key)));
         }
-        statement.setString(i, castToString(values.get("id")));
+        statement.setObject(i, castToObject(values.get("id")));
 
         statement.executeUpdate();
     }

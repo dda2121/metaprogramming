@@ -20,7 +20,7 @@ public class Util {
         }
     }
 
-    public static String castToString(Object obj) throws MissedIdException, NoSuchFieldException, IllegalAccessException {
+    public static Object castToObject(Object obj) throws MissedIdException, NoSuchFieldException, IllegalAccessException {
         if (obj == null) {
             return null;
         }
@@ -28,11 +28,11 @@ public class Util {
         if (cls.equals(Integer.class) || cls.equals(Long.class) || cls.equals(Boolean.class)
                 || cls.equals(String.class) || cls.equals(Double.class) || cls.equals(Float.class)
                 || cls.equals(Character.class)) {
-            return obj.toString();
+            return obj;
         }
-        String id = SQLUtil.getObjectIdValue(obj);
+        Long id = SQLUtil.getObjectIdValue(obj);
         // TODO add better validation
-        if (id == null || id.equals("0")) {
+        if (id == 0) {
             throw new MissedIdException("Object with type " + getClassNameWithoutPackage(cls) +
                     " has empty id field.");
         }
