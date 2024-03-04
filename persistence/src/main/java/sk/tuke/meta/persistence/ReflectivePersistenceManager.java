@@ -8,10 +8,7 @@ import sk.tuke.meta.persistence.util.Util;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.*;
 
 import static sk.tuke.meta.persistence.util.SQLUtil.getObjectIdValue;
@@ -248,8 +245,15 @@ public class ReflectivePersistenceManager implements PersistenceManager {
     private long insert(String tableName, Map<String, Object> data) throws SQLException, MissedIdException, NoSuchFieldException, IllegalAccessException {
         String query = getInsertQuery(tableName, data);
 
-        Statement statement = connection.createStatement();
-        int affectedRows = statement.executeUpdate(query);
+        PreparedStatement statement = connection.prepareStatement(query);
+        int i = 1;
+        for (String key: data.keySet()) {
+            if (key.equals("id")) {
+                continue;
+            }
+            statement.setString(i++, castToString(data.get(key)));
+        }
+        int affectedRows = statement.executeUpdate();
 
         if (affectedRows == 0) {
             throw new SQLException("Creating " + tableName + " failed, no rows affected.");
@@ -268,14 +272,23 @@ public class ReflectivePersistenceManager implements PersistenceManager {
     private void update(String tableName, Map<String, Object> values) throws SQLException, MissedIdException, NoSuchFieldException, IllegalAccessException {
         String query = getUpdateQuery(tableName, values);
 
-        Statement statement = connection.createStatement();
-        statement.executeUpdate(query);
+        PreparedStatement statement = connection.prepareStatement(query);
+        int i = 1;
+        for (String key: values.keySet()) {
+            if (key.equals("id")) {
+                continue;
+            }
+            statement.setString(i++, castToString(values.get(key)));
+        }
+        statement.setString(i, castToString(values.get("id")));
+
+        statement.executeUpdate();
     }
 
     private Map<String, Object> getValues(Object obj) throws FieldAccessException {
         Class cls = obj.getClass();
         Field[] fields = cls.getDeclaredFields();
-        Map<String, Object> values = new HashMap<>();
+        Map<String, Object> values = new LinkedHashMap<>();
         for (Field field: fields) {
             field.setAccessible(true);
             try {
@@ -287,22 +300,15 @@ public class ReflectivePersistenceManager implements PersistenceManager {
         return values;
     }
 
-    private String getInsertQuery(String tableName, Map<String, Object> data) throws MissedIdException, IllegalAccessException, NoSuchFieldException {
+    private String getInsertQuery(String tableName, Map<String, Object> data) {
         StringBuilder names = new StringBuilder("(");
         StringBuilder values = new StringBuilder("(");
         for (String key: data.keySet()) {
             if (key.equals("id")) {
                 continue;
             }
-            String val = castToString(data.get(key));
-            if (val != null) {
-                names.append(key).append(",");
-                if (data.get(key).getClass().equals(String.class)) {
-                    values.append("\"").append(val).append("\",");
-                } else {
-                    values.append(val).append(",");
-                }
-            }
+            names.append(key).append(",");
+            values.append("?,");
         }
         names = new StringBuilder(names.substring(0, names.length() - 1));
         values = new StringBuilder(values.substring(0, values.length() - 1));
@@ -311,32 +317,17 @@ public class ReflectivePersistenceManager implements PersistenceManager {
         return "INSERT INTO " + tableName + names + " values" + values + ";";
     }
 
-    private String getUpdateQuery(String tableName, Map<String, Object> data) throws MissedIdException, NoSuchFieldException, IllegalAccessException {
+    private String getUpdateQuery(String tableName, Map<String, Object> data) {
         StringBuilder query = new StringBuilder("UPDATE " + tableName + " SET ");
 
         for (String key: data.keySet()) {
             if (key.equals("id")) {
                 continue;
             }
-            String val = castToString(data.get(key));
-            if (val != null) {
-                if (data.get(key).getClass().equals(String.class)) {
-                    query.append(key).append("=\"").append(val).append("\",");
-                } else {
-                    query.append(key).append("=").append(val).append(",");
-                }
-            } else {
-                query.append(key).append("=").append((String) null).append(",");
-            }
+            query.append(key).append("=?,");
         }
         query = new StringBuilder(query.substring(0, query.length() - 1));
-        query.append(" WHERE id = ");
-        Object idVal = data.get("id");
-        if (idVal.getClass().equals(String.class)) {
-            query.append("\"").append(idVal).append("\";");
-        } else {
-            query.append(idVal).append(";");
-        }
+        query.append(" WHERE id = ?;");
         return query.toString();
     }
 }
