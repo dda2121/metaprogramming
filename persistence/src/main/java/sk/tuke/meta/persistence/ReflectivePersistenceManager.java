@@ -38,7 +38,7 @@ public class ReflectivePersistenceManager implements PersistenceManager {
                 statement.execute(query);
                 LOGGER.info("Table '" + tableName + "' was successfully created.");
             } catch (SQLException e) {
-                LOGGER.error("Error occurred when creating table " + tableName + ": " + e.getMessage());
+                throw new PersistenceException("Error occurred when creating table " + tableName + ": " + e.getMessage());
             }
         }
     }
@@ -52,17 +52,15 @@ public class ReflectivePersistenceManager implements PersistenceManager {
             Statement statement = connection.createStatement();
             rs = statement.executeQuery(query);
         } catch (SQLException e) {
-            LOGGER.error("Error occurred when retrieving object from a database with class type '" +
+            throw new PersistenceException("Error occurred when retrieving object from a database with class type '" +
                     getClassNameWithoutPackage(type) + "'.");
-            return Optional.empty();
         }
         try {
             if (rs.next()) {
                 return processResultSet(type, rs);
             }
-        } catch (SQLException e) {
-            LOGGER.error("Error occurred when processing result set of an object with class type '" +
-                    getClassNameWithoutPackage(type) + "'.");
+        } catch (PersistenceException | SQLException e) {
+            throw new PersistenceException(e.getMessage());
         }
         return Optional.empty();
     }
@@ -76,9 +74,8 @@ public class ReflectivePersistenceManager implements PersistenceManager {
             Statement statement = connection.createStatement();
             rs = statement.executeQuery(query);
         } catch (SQLException e) {
-            LOGGER.error("Error occurred when retrieving objects from a database with class type '" +
+            throw new PersistenceException("Error occurred when retrieving objects from a database with class type '" +
                     getClassNameWithoutPackage(type) + "'.");
-            return Collections.emptyList();
         }
 
         try {
@@ -88,11 +85,9 @@ public class ReflectivePersistenceManager implements PersistenceManager {
                 optional.ifPresent(result::add);
             }
             return result;
-        } catch (SQLException e) {
-            LOGGER.error("Error occurred when processing result set of an object with class type '" +
-                    getClassNameWithoutPackage(type) + "'.");
+        } catch (PersistenceException | SQLException e) {
+            throw new PersistenceException(e.getMessage());
         }
-        return Collections.emptyList();
     }
 
     @Override
@@ -102,20 +97,21 @@ public class ReflectivePersistenceManager implements PersistenceManager {
         try {
             values = getValues(entity);
         } catch (FieldAccessException e) {
-            LOGGER.error(e.getMessage());
-            return;
+            throw new PersistenceException(e.getMessage());
         }
 
         if (!values.containsKey("id")) {
-            LOGGER.error("Provided object with type " + className + " doesn't contain 'id' field");
-            return;
+            throw new PersistenceException("Provided object with type " + className + " doesn't contain 'id' field");
         }
 
-        // TODO add validation if id is not number
-        if ((Long) values.get("id") == 0) {
-            handleInsert(className, values, entity);
-        } else {
-            handleUpdate(className, values);
+        try {
+            if ((Long) values.get("id") == 0) {
+                handleInsert(className, values, entity);
+            } else {
+                handleUpdate(className, values);
+            }
+        } catch (PersistenceException e) {
+            throw new PersistenceException(e.getMessage());
         }
     }
 
@@ -126,51 +122,45 @@ public class ReflectivePersistenceManager implements PersistenceManager {
         try {
             id = getObjectIdValue(entity);
             if (id == null || id == 0) {
-                LOGGER.error("Object with class type '" + className +
+                throw new PersistenceException("Object with class type '" + className +
                         "' has not set up 'id' field. Not proceeding with deleting.");
-                return;
             }
         } catch (NoSuchFieldException e) {
-            LOGGER.error("Provided object with class type '" + className + "' doesn't contain 'id' field.");
-            return;
+            throw new PersistenceException("Provided object with class type '" + className + "' doesn't contain 'id' field.");
         } catch (IllegalAccessException e) {
-            LOGGER.error("Error occurred when accessing 'id' field of an object with class type '" + className);
-            return;
+            throw new PersistenceException("Error occurred when accessing 'id' field of an object with class type '" + className);
         }
 
-        // TODO id can be other type then long
         String query = "DELETE FROM " + className.toLowerCase() + " WHERE id = " + id;
         try {
             Statement statement = connection.createStatement();
             statement.execute(query);
         } catch (SQLException e) {
-            LOGGER.error("Error occurred when deleting raw from a table " + className.toLowerCase() + "': "
+            throw new PersistenceException("Error occurred when deleting raw from a table " + className.toLowerCase() + "': "
                     + e.getMessage());
-            return;
         }
         LOGGER.info("Raw was successfully deleted from '" + className.toLowerCase() + "' table");
     }
 
-    private <T> Optional<T> processResultSet(Class<T> type, ResultSet rs) {
+    private <T> Optional<T> processResultSet(Class<T> type, ResultSet rs) throws PersistenceException {
         try {
             return Optional.of(resultSetToObject(type, rs));
         } catch (NoSuchMethodException e) {
-            LOGGER.error("Provided object with class type '" + getClassNameWithoutPackage(type) +
+            throw new PersistenceException("Provided object with class type '" + getClassNameWithoutPackage(type) +
                     "' doesn't contain empty constructor.");
         } catch (InvocationTargetException e) {
-            LOGGER.error("Error occurred when creating instance of an class '" +
+            throw new PersistenceException("Error occurred when creating instance of an class '" +
                     getClassNameWithoutPackage(type) + "'.");
         } catch (InstantiationException e) {
-            LOGGER.error("Error occurred when creating an instance of an abstract class '" +
+            throw new PersistenceException("Error occurred when creating an instance of an abstract class '" +
                     getClassNameWithoutPackage(type) + "'.");
         } catch (IllegalAccessException e) {
-            LOGGER.error("Error occurred due to inaccessible constructor in class '" +
+            throw new PersistenceException("Error occurred due to inaccessible constructor in class '" +
                     getClassNameWithoutPackage(type) + "'.");
         } catch (SQLException e) {
-            LOGGER.error("Error processing result set: Please check the validity of the result set " +
+            throw new PersistenceException("Error processing result set: Please check the validity of the result set " +
                     "and the provided column label in class '" + getClassNameWithoutPackage(type) + "'.");
         }
-        return Optional.empty();
     }
 
     private <T> T resultSetToObject(Class<T> type, ResultSet rs) throws NoSuchMethodException, InvocationTargetException,
@@ -204,7 +194,7 @@ public class ReflectivePersistenceManager implements PersistenceManager {
         return columns.toString();
     }
 
-    private void handleInsert(String className, Map<String, Object> values, Object entity) {
+    private void handleInsert(String className, Map<String, Object> values, Object entity) throws PersistenceException {
         try {
             long id = insert(className.toLowerCase(), values);
             Field idField = entity.getClass().getDeclaredField("id");
@@ -212,36 +202,33 @@ public class ReflectivePersistenceManager implements PersistenceManager {
             idField.setLong(entity, id);
             LOGGER.info("Raw was successfully inserted into '" + className.toLowerCase() + "' table.");
         } catch (SQLException e) {
-            LOGGER.error("Error occurred when inserting row into table '" + className.toLowerCase() + "': " + e.getMessage());
+            throw new PersistenceException("Error occurred when inserting row into table '" + className.toLowerCase() + "': " + e.getMessage());
         } catch (NoSuchFieldException e) {
-            LOGGER.error("Object with type " + className + " doesn't contain 'id' field");
+            throw new PersistenceException("Object with type " + className + " doesn't contain 'id' field");
         } catch (IllegalAccessException e) {
-            LOGGER.error("Error occurred when setting id to newly create object with type " + className);
+            throw new PersistenceException("Error occurred when setting id to newly create object with type " + className);
         } catch (MissedIdException e) {
-            LOGGER.error("Error occurred when inserting raw into a table " + className.toLowerCase() +
+            throw new PersistenceException("Error occurred when inserting raw into a table " + className.toLowerCase() +
                     ". Non primitive object that is behave as FK has not set up ID field");
         }
     }
 
-    // TODO id can be other type then long
-    private void handleUpdate(String className, Map<String, Object> values) {
+    private void handleUpdate(String className, Map<String, Object> values) throws PersistenceException {
         try {
             update(className, values);
             LOGGER.info("Raw was successfully updated in '" + className.toLowerCase() + "' table.");
         } catch (SQLException e) {
-            LOGGER.error("Error occurred when updating row in table '" + className.toLowerCase() + "': " + e.getMessage());
+            throw new PersistenceException("Error occurred when updating row in table '" + className.toLowerCase() + "': " + e.getMessage());
         } catch (MissedIdException e) {
-            LOGGER.error("Error occurred when inserting raw into a table " + className.toLowerCase() +
+            throw new PersistenceException("Error occurred when inserting raw into a table " + className.toLowerCase() +
                     ". Non primitive object that is behave as FK has not set up ID field");
         } catch (NoSuchFieldException e) {
-            LOGGER.error("Object with type " + className + " doesn't contain 'id' field");
+            throw new PersistenceException("Object with type " + className + " doesn't contain 'id' field");
         } catch (IllegalAccessException e) {
-            LOGGER.error("Error occurred when retrieving 'id' value from object with type " + className);
+            throw new PersistenceException("Error occurred when retrieving 'id' value from object with type " + className);
         }
     }
 
-
-    // TODO id can be other type then long
     private long insert(String tableName, Map<String, Object> data) throws SQLException, MissedIdException, NoSuchFieldException, IllegalAccessException {
         String query = getInsertQuery(tableName, data);
 
