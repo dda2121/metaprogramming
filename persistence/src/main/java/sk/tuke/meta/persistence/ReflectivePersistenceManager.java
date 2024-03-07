@@ -141,6 +141,7 @@ public class ReflectivePersistenceManager implements PersistenceManager {
         LOGGER.info("Raw was successfully deleted from '" + className.toLowerCase() + "' table");
     }
 
+    // test
     private <T> Optional<T> processResultSet(Class<T> type, ResultSet rs) throws PersistenceException {
         try {
             return Optional.of(resultSetToObject(type, rs));
