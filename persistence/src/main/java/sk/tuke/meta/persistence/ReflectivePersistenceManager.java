@@ -32,7 +32,7 @@ public class ReflectivePersistenceManager implements PersistenceManager {
         for (Class c: types) {
             Field[] fields = c.getDeclaredFields();
             String tableName = getClassNameWithoutPackage(c).toLowerCase();
-            String query = "CREATE TABLE IF NOT EXISTS " + tableName + getTableScript(fields);
+            String query = "CREATE TABLE IF NOT EXISTS [" + tableName + "]" + getTableScript(fields);
             try {
                 Statement statement = connection.createStatement();
                 statement.execute(query);
@@ -45,8 +45,8 @@ public class ReflectivePersistenceManager implements PersistenceManager {
 
     @Override
     public <T> Optional<T> get(Class<T> type, long id) {
-        String query = "SELECT * FROM " + getClassNameWithoutPackage(type).toLowerCase()
-                + " WHERE id = " + id;
+        String query = "SELECT * FROM [" + getClassNameWithoutPackage(type).toLowerCase()
+                + "] WHERE [id] = " + id;
         ResultSet rs;
         try {
             Statement statement = connection.createStatement();
@@ -68,7 +68,7 @@ public class ReflectivePersistenceManager implements PersistenceManager {
     @Override
     public <T> List<T> getAll(Class<T> type) {
         List<T> result = new ArrayList<>();
-        String query = "SELECT * FROM " + getClassNameWithoutPackage(type).toLowerCase();
+        String query = "SELECT * FROM [" + getClassNameWithoutPackage(type).toLowerCase() + "]";
         ResultSet rs;
         try {
             Statement statement = connection.createStatement();
@@ -79,7 +79,6 @@ public class ReflectivePersistenceManager implements PersistenceManager {
         }
 
         try {
-            // TODO what if optional is empty (in what cases it can happen)
             while (rs.next()) {
                 Optional<T> optional = processResultSet(type, rs);
                 optional.ifPresent(result::add);
@@ -131,7 +130,7 @@ public class ReflectivePersistenceManager implements PersistenceManager {
             throw new PersistenceException("Error occurred when accessing 'id' field of an object with class type '" + className);
         }
 
-        String query = "DELETE FROM " + className.toLowerCase() + " WHERE id = " + id;
+        String query = "DELETE FROM [" + className.toLowerCase() + "] WHERE [id] = " + id;
         try {
             Statement statement = connection.createStatement();
             statement.execute(query);
@@ -179,7 +178,7 @@ public class ReflectivePersistenceManager implements PersistenceManager {
         StringBuilder columns = new StringBuilder("(");
         for (Field f: fields) {
             f.setAccessible(true);
-            columns.append(f.getName()).append(" ");
+            columns.append("[").append(f.getName()).append("] ");
             columns.append(typeToSQL(f.getType()));
             if (f.getName().equals("id")) {
                 columns.append(" PRIMARY KEY,");
@@ -294,27 +293,27 @@ public class ReflectivePersistenceManager implements PersistenceManager {
             if (key.equals("id")) {
                 continue;
             }
-            names.append(key).append(",");
+            names.append("[").append(key).append("]").append(",");
             values.append("?,");
         }
         names = new StringBuilder(names.substring(0, names.length() - 1));
         values = new StringBuilder(values.substring(0, values.length() - 1));
         names.append(")");
         values.append(")");
-        return "INSERT INTO " + tableName + names + " values" + values + ";";
+        return "INSERT INTO [" + tableName + "]" + names + " values" + values + ";";
     }
 
     private String getUpdateQuery(String tableName, Map<String, Object> data) {
-        StringBuilder query = new StringBuilder("UPDATE " + tableName + " SET ");
+        StringBuilder query = new StringBuilder("UPDATE [" + tableName + "] SET ");
 
         for (String key: data.keySet()) {
             if (key.equals("id")) {
                 continue;
             }
-            query.append(key).append("=?,");
+            query.append("[").append(key).append("]").append("=?,");
         }
         query = new StringBuilder(query.substring(0, query.length() - 1));
-        query.append(" WHERE id = ?;");
+        query.append(" WHERE [id] = ?;");
         return query.toString();
     }
 }
