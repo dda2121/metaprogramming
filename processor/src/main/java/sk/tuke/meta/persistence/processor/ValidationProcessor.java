@@ -69,7 +69,7 @@ public class ValidationProcessor extends AbstractProcessor {
                 columns.append("[").append(columnName).append("] ");
                 columns.append(typeToSQL(e.asType()));
                 if (e.getAnnotation(Id.class) != null) {
-                    columns.append(" AUTO_INCREMENT PRIMARY KEY");
+                    columns.append(" PRIMARY KEY AUTOINCREMENT");
                 }
                 if (!columnAnnotation.nullable()) {
                     columns.append(" NOT NULL");
