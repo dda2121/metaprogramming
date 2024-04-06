@@ -1,6 +1,7 @@
 package sk.tuke.meta.persistence.processor;
 
 import sk.tuke.meta.persistence.annotations.Column;
+import sk.tuke.meta.persistence.annotations.Id;
 import sk.tuke.meta.persistence.annotations.Table;
 
 import javax.annotation.processing.*;
@@ -57,13 +58,19 @@ public class ValidationProcessor extends AbstractProcessor {
         for (Element e : enclosedElements) {
             if (e.getKind() == ElementKind.FIELD &&
                     e.getAnnotation(Column.class) != null) {
+                Column columnAnnotation = e.getAnnotation(Column.class);
                 columns.append("[").append(e).append("] ");
                 columns.append(typeToSQL(e.asType()));
-                if (e.toString().equals("id")) {
-                    columns.append(" PRIMARY KEY,");
-                } else {
-                    columns.append(",");
+                if (e.getAnnotation(Id.class) != null) {
+                    columns.append(" AUTO_INCREMENT PRIMARY KEY");
                 }
+                if (!columnAnnotation.nullable()) {
+                    columns.append(" NOT NULL");
+                }
+                if (columnAnnotation.unique()) {
+                    columns.append(" UNIQUE");
+                }
+                columns.append(",");
             }
         }
         if (columns.toString().endsWith(",")) {
