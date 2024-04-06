@@ -1,11 +1,21 @@
 package sk.tuke.meta.example;
 
-public class Person {
-    private long id;
-    private String surname;
-    private String name;
-    private int age;
+import sk.tuke.meta.persistence.annotations.Column;
+import sk.tuke.meta.persistence.annotations.Id;
+import sk.tuke.meta.persistence.annotations.Table;
 
+@Table
+public class Person {
+    @Id
+    @Column
+    private long id;
+    @Column
+    private String surname;
+    @Column
+    private String name;
+    @Column
+    private int age;
+    @Column
     private Department department;
 
     public Person() {

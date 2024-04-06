@@ -6,6 +6,10 @@ import sk.tuke.meta.persistence.exception.FieldAccessException;
 import sk.tuke.meta.persistence.exception.MissedIdException;
 import sk.tuke.meta.persistence.util.Util;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.sql.*;
@@ -29,17 +33,28 @@ public class ReflectivePersistenceManager implements PersistenceManager {
 
     @Override
     public void createTables(Class<?>... types) {
-        for (Class c: types) {
-            Field[] fields = c.getDeclaredFields();
-            String tableName = getClassNameWithoutPackage(c).toLowerCase();
-            String query = "CREATE TABLE IF NOT EXISTS [" + tableName + "]" + getTableScript(fields);
-            try {
-                Statement statement = connection.createStatement();
-                statement.execute(query);
-                LOGGER.info("Table '" + tableName + "' was successfully created.");
-            } catch (SQLException e) {
-                throw new PersistenceException("Error occurred when creating table " + tableName + ": " + e.getMessage());
+        ClassLoader classLoader = ReflectivePersistenceManager.class.getClassLoader();
+        InputStream inputStream = classLoader.getResourceAsStream("script.sql");
+        if (inputStream != null) {
+            executeScript(inputStream);
+        } else {
+            System.err.println("File not found!");
+        }
+    }
+
+    private void executeScript(InputStream inputStream) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                try {
+                    Statement statement = connection.createStatement();
+                    statement.execute(line);
+                } catch (SQLException e) {
+                    throw new PersistenceException("Error occurred when executing SQL statement: " + e.getMessage(), e);
+                }
             }
+        } catch (IOException e) {
+            throw new PersistenceException("Error occurred when reading input stream: " + e.getMessage(), e);
         }
     }
 

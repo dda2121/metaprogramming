@@ -1,8 +1,17 @@
 package sk.tuke.meta.example;
 
+import sk.tuke.meta.persistence.annotations.Column;
+import sk.tuke.meta.persistence.annotations.Id;
+import sk.tuke.meta.persistence.annotations.Table;
+
+@Table
 public class Department {
+    @Id
+    @Column
     private long id;
+    @Column
     private String name;
+    @Column
     private String code;
 
     public Department() {
