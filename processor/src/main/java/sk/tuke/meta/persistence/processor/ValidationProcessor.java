@@ -5,6 +5,7 @@ import sk.tuke.meta.persistence.annotations.Id;
 import sk.tuke.meta.persistence.annotations.Table;
 
 import javax.annotation.processing.*;
+import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.TypeElement;
@@ -16,6 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
+@SupportedSourceVersion(SourceVersion.RELEASE_19)
 @SupportedAnnotationTypes("sk.tuke.meta.persistence.annotations.*")
 public class ValidationProcessor extends AbstractProcessor {
 
@@ -47,7 +49,10 @@ public class ValidationProcessor extends AbstractProcessor {
     private String getScript(Element element) {
         String query = "";
         if (element instanceof TypeElement typeElement) {
-            String elementName = element.getSimpleName().toString();
+            String tableAnnotationName = element.getAnnotation(Table.class).name();
+            String elementName = tableAnnotationName.isEmpty() ? element.getSimpleName().toString() : tableAnnotationName;
+            System.out.println(elementName);
+
             query = "CREATE TABLE IF NOT EXISTS [" + elementName + "]" + getTableScript(element.getEnclosedElements());
         }
         return query;
@@ -59,7 +64,9 @@ public class ValidationProcessor extends AbstractProcessor {
             if (e.getKind() == ElementKind.FIELD &&
                     e.getAnnotation(Column.class) != null) {
                 Column columnAnnotation = e.getAnnotation(Column.class);
-                columns.append("[").append(e).append("] ");
+                String columnAnnotationName = columnAnnotation.name();
+                String columnName = columnAnnotationName.isEmpty() ? e.toString() : columnAnnotationName;
+                columns.append("[").append(columnName).append("] ");
                 columns.append(typeToSQL(e.asType()));
                 if (e.getAnnotation(Id.class) != null) {
                     columns.append(" AUTO_INCREMENT PRIMARY KEY");
