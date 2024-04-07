@@ -1,5 +1,6 @@
 package sk.tuke.meta.persistence.util;
 
+import sk.tuke.meta.persistence.annotations.Column;
 import sk.tuke.meta.persistence.model.Property;
 import sk.tuke.meta.persistence.ReflectivePersistenceManager;
 import sk.tuke.meta.persistence.annotations.Id;
@@ -109,6 +110,20 @@ public class Util {
             field.setAccessible(true);
             if (field.isAnnotationPresent(annotation)) {
                 return field;
+            }
+        }
+        return null;
+    }
+
+    public static String getPrimaryKeyFieldName(Class<?> type) {
+        for (Field field: type.getDeclaredFields()) {
+            field.setAccessible(true);
+            if (field.isAnnotationPresent(Id.class)) {
+                Column column = field.getAnnotation(Column.class);
+                if (column != null) {
+                    return column.name().isEmpty() ? field.getName() : column.name();
+                }
+                return field.getName();
             }
         }
         return null;

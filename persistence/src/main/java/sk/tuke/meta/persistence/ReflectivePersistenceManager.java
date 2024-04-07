@@ -47,7 +47,7 @@ public class ReflectivePersistenceManager implements PersistenceManager {
     @Override
     public <T> Optional<T> get(Class<T> type, long id) {
         String tableName = Util.getTableName(type);
-        String query = "SELECT * FROM [" + tableName + "] WHERE [id] = " + id;
+        String query = "SELECT * FROM [" + tableName + "] WHERE [" + Util.getPrimaryKeyFieldName(type) + "] = " + id;
         ResultSet rs;
         try {
             Statement statement = connection.createStatement();
