@@ -2,8 +2,11 @@ package sk.tuke.meta.persistence;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import sk.tuke.meta.persistence.annotations.Column;
+import sk.tuke.meta.persistence.annotations.Id;
 import sk.tuke.meta.persistence.exception.FieldAccessException;
 import sk.tuke.meta.persistence.exception.MissedIdException;
+import sk.tuke.meta.persistence.model.Property;
 import sk.tuke.meta.persistence.util.Util;
 
 import java.io.BufferedReader;
@@ -15,10 +18,9 @@ import java.lang.reflect.InvocationTargetException;
 import java.sql.*;
 import java.util.*;
 
-import static sk.tuke.meta.persistence.util.SQLUtil.getObjectIdValue;
-import static sk.tuke.meta.persistence.util.SQLUtil.typeToSQL;
 import static sk.tuke.meta.persistence.util.Util.castToObject;
 import static sk.tuke.meta.persistence.util.Util.getClassNameWithoutPackage;
+import static sk.tuke.meta.persistence.util.Util.getObjectIdValue;
 
 
 public class ReflectivePersistenceManager implements PersistenceManager {
@@ -42,26 +44,10 @@ public class ReflectivePersistenceManager implements PersistenceManager {
         }
     }
 
-    private void executeScript(InputStream inputStream) {
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                try {
-                    Statement statement = connection.createStatement();
-                    statement.execute(line);
-                } catch (SQLException e) {
-                    throw new PersistenceException("Error occurred when executing SQL statement: " + e.getMessage(), e);
-                }
-            }
-        } catch (IOException e) {
-            throw new PersistenceException("Error occurred when reading input stream: " + e.getMessage(), e);
-        }
-    }
-
     @Override
     public <T> Optional<T> get(Class<T> type, long id) {
-        String query = "SELECT * FROM [" + getClassNameWithoutPackage(type).toLowerCase()
-                + "] WHERE [id] = " + id;
+        String tableName = Util.getTableName(type);
+        String query = "SELECT * FROM [" + tableName + "] WHERE [id] = " + id;
         ResultSet rs;
         try {
             Statement statement = connection.createStatement();
@@ -83,14 +69,15 @@ public class ReflectivePersistenceManager implements PersistenceManager {
     @Override
     public <T> List<T> getAll(Class<T> type) {
         List<T> result = new ArrayList<>();
-        String query = "SELECT * FROM [" + getClassNameWithoutPackage(type).toLowerCase() + "]";
+        String tableName = Util.getTableName(type);
+        String query = "SELECT * FROM [" + tableName + "]";
         ResultSet rs;
         try {
             Statement statement = connection.createStatement();
             rs = statement.executeQuery(query);
         } catch (SQLException e) {
             throw new PersistenceException("Error occurred when retrieving objects from a database with class type '" +
-                    getClassNameWithoutPackage(type) + "'.");
+                    tableName + "'.");
         }
 
         try {
@@ -106,23 +93,24 @@ public class ReflectivePersistenceManager implements PersistenceManager {
 
     @Override
     public void save(Object entity) {
-        String className = getClassNameWithoutPackage(entity.getClass());
-        Map<String, Object> values;
+        String tableName = Util.getTableName(entity.getClass());
+        List<Property> values;
         try {
             values = getValues(entity);
         } catch (FieldAccessException e) {
             throw new PersistenceException(e.getMessage());
         }
 
-        if (!values.containsKey("id")) {
-            throw new PersistenceException("Provided object with type " + className + " doesn't contain 'id' field");
+        if (!Util.containsPrimaryKeyField(values)) {
+            throw new PersistenceException("Provided object with type " +
+                    getClassNameWithoutPackage(entity.getClass()) + " doesn't contain 'id' field");
         }
 
         try {
-            if ((Long) values.get("id") == 0) {
-                handleInsert(className, values, entity);
+            if ((Long) Objects.requireNonNull(Util.getPrimaryKeyValue(values)) == 0) {
+                handleInsert(tableName, values, entity);
             } else {
-                handleUpdate(className, values);
+                handleUpdate(tableName, values);
             }
         } catch (PersistenceException e) {
             throw new PersistenceException(e.getMessage());
@@ -131,32 +119,46 @@ public class ReflectivePersistenceManager implements PersistenceManager {
 
     @Override
     public void delete(Object entity) {
-        String className = getClassNameWithoutPackage(entity.getClass());
+        String tableName = Util.getTableName(entity.getClass());
         Long id;
         try {
             id = getObjectIdValue(entity);
             if (id == null || id == 0) {
-                throw new PersistenceException("Object with class type '" + className +
-                        "' has not set up 'id' field. Not proceeding with deleting.");
+                throw new PersistenceException("Object with class type '" + getClassNameWithoutPackage(entity.getClass())
+                        + "' has not set up 'id' field. Not proceeding with deleting.");
             }
-        } catch (NoSuchFieldException e) {
-            throw new PersistenceException("Provided object with class type '" + className + "' doesn't contain 'id' field.");
         } catch (IllegalAccessException e) {
-            throw new PersistenceException("Error occurred when accessing 'id' field of an object with class type '" + className);
+            throw new PersistenceException("Error occurred when accessing 'id' field of an object with class type '"
+                    + getClassNameWithoutPackage(entity.getClass()));
         }
 
-        String query = "DELETE FROM [" + className.toLowerCase() + "] WHERE [id] = " + id;
+        String query = "DELETE FROM [" + tableName + "] WHERE [id] = " + id;
         try {
             Statement statement = connection.createStatement();
             statement.execute(query);
         } catch (SQLException e) {
-            throw new PersistenceException("Error occurred when deleting raw from a table " + className.toLowerCase() + "': "
+            throw new PersistenceException("Error occurred when deleting raw from a table " + tableName + "': "
                     + e.getMessage());
         }
-        LOGGER.info("Raw was successfully deleted from '" + className.toLowerCase() + "' table");
+        LOGGER.info("Raw was successfully deleted from '" + tableName + "' table");
     }
 
-    // test
+    private void executeScript(InputStream inputStream) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                try {
+                    Statement statement = connection.createStatement();
+                    statement.execute(line);
+                } catch (SQLException e) {
+                    throw new PersistenceException("Error occurred when executing SQL statement: " + e.getMessage(), e);
+                }
+            }
+        } catch (IOException e) {
+            throw new PersistenceException("Error occurred when reading input stream: " + e.getMessage(), e);
+        }
+    }
+
     private <T> Optional<T> processResultSet(Class<T> type, ResultSet rs) throws PersistenceException {
         try {
             return Optional.of(resultSetToObject(type, rs));
@@ -184,58 +186,44 @@ public class ReflectivePersistenceManager implements PersistenceManager {
         Field[] fields = type.getDeclaredFields();
         for (Field f: fields) {
             f.setAccessible(true);
-            String value = rs.getString(f.getName());
+            Column columnAnnotation = f.getAnnotation(Column.class);
+            if (columnAnnotation == null) {
+                continue;
+            }
+            String columnName = columnAnnotation.name().isEmpty() ? f.getName() : columnAnnotation.name();
+            String value = rs.getString(columnName);
             f.set(obj, Util.convertDataType(f.getType(), value, connection));
         }
         return obj;
     }
 
-    private String getTableScript(Field[] fields) {
-        StringBuilder columns = new StringBuilder("(");
-        for (Field f: fields) {
-            f.setAccessible(true);
-            columns.append("[").append(f.getName()).append("] ");
-            columns.append(typeToSQL(f.getType()));
-            if (f.getName().equals("id")) {
-                columns.append(" PRIMARY KEY,");
-            } else {
-                columns.append(",");
-            }
-        }
-        if (columns.toString().endsWith(",")) {
-            columns = new StringBuilder(columns.substring(0, columns.length() - 1));
-        }
-        columns.append(");");
-        return columns.toString();
-    }
-
-    private void handleInsert(String className, Map<String, Object> values, Object entity) throws PersistenceException {
+    private void handleInsert(String className, List<Property> values, Object entity) throws PersistenceException {
         try {
-            long id = insert(className.toLowerCase(), values);
-            Field idField = entity.getClass().getDeclaredField("id");
+            long id = insert(className, values);
+            Field idField = Objects.requireNonNull(Util.getFieldAnnotatedWith(entity, Id.class));
             idField.setAccessible(true);
             idField.setLong(entity, id);
-            LOGGER.info("Raw was successfully inserted into '" + className.toLowerCase() + "' table.");
+            LOGGER.info("Raw was successfully inserted into '" + className + "' table.");
         } catch (SQLException e) {
-            throw new PersistenceException("Error occurred when inserting row into table '" + className.toLowerCase() + "': " + e.getMessage());
+            throw new PersistenceException("Error occurred when inserting row into table '" + className + "': " + e.getMessage());
         } catch (NoSuchFieldException e) {
             throw new PersistenceException("Object with type " + className + " doesn't contain 'id' field");
         } catch (IllegalAccessException e) {
             throw new PersistenceException("Error occurred when setting id to newly create object with type " + className);
         } catch (MissedIdException e) {
-            throw new PersistenceException("Error occurred when inserting raw into a table " + className.toLowerCase() +
+            throw new PersistenceException("Error occurred when inserting raw into a table " + className +
                     ". Non primitive object that is behave as FK has not set up ID field");
         }
     }
 
-    private void handleUpdate(String className, Map<String, Object> values) throws PersistenceException {
+    private void handleUpdate(String className, List<Property> values) throws PersistenceException {
         try {
             update(className, values);
-            LOGGER.info("Raw was successfully updated in '" + className.toLowerCase() + "' table.");
+            LOGGER.info("Raw was successfully updated in '" + className + "' table.");
         } catch (SQLException e) {
-            throw new PersistenceException("Error occurred when updating row in table '" + className.toLowerCase() + "': " + e.getMessage());
+            throw new PersistenceException("Error occurred when updating row in table '" + className + "': " + e.getMessage());
         } catch (MissedIdException e) {
-            throw new PersistenceException("Error occurred when inserting raw into a table " + className.toLowerCase() +
+            throw new PersistenceException("Error occurred when inserting raw into a table " + className +
                     ". Non primitive object that is behave as FK has not set up ID field");
         } catch (NoSuchFieldException e) {
             throw new PersistenceException("Object with type " + className + " doesn't contain 'id' field");
@@ -244,21 +232,21 @@ public class ReflectivePersistenceManager implements PersistenceManager {
         }
     }
 
-    private long insert(String tableName, Map<String, Object> data) throws SQLException, MissedIdException, NoSuchFieldException, IllegalAccessException {
+    private long insert(String tableName, List<Property> data) throws SQLException, MissedIdException, NoSuchFieldException, IllegalAccessException {
         String query = getInsertQuery(tableName, data);
 
         PreparedStatement statement = connection.prepareStatement(query);
         int i = 1;
-        for (String key: data.keySet()) {
-            if (key.equals("id")) {
+        for (Property property: data) {
+            if (property.isPrimaryKey()) {
                 continue;
             }
-            statement.setObject(i++, castToObject(data.get(key)));
+            statement.setObject(i++, castToObject(property.value()));
         }
         int affectedRows = statement.executeUpdate();
 
         if (affectedRows == 0) {
-            throw new SQLException("Creating " + tableName + " failed, no rows affected.");
+            throw new SQLException("Creating table " + tableName + " failed, no rows affected.");
         }
 
         try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
@@ -271,45 +259,52 @@ public class ReflectivePersistenceManager implements PersistenceManager {
         }
     }
 
-    private void update(String tableName, Map<String, Object> values) throws SQLException, MissedIdException, NoSuchFieldException, IllegalAccessException {
+    private void update(String tableName, List<Property> values) throws SQLException, MissedIdException, NoSuchFieldException, IllegalAccessException {
         String query = getUpdateQuery(tableName, values);
 
         PreparedStatement statement = connection.prepareStatement(query);
         int i = 1;
-        for (String key: values.keySet()) {
-            if (key.equals("id")) {
+        for (Property property: values) {
+            if (property.isPrimaryKey()) {
                 continue;
             }
-            statement.setObject(i++, castToObject(values.get(key)));
+            statement.setObject(i++, castToObject(property.value()));
         }
-        statement.setObject(i, castToObject(values.get("id")));
+        statement.setObject(i, castToObject(Util.getPrimaryKeyValue(values)));
 
         statement.executeUpdate();
     }
 
-    private Map<String, Object> getValues(Object obj) throws FieldAccessException {
+    private List<Property> getValues(Object obj) throws FieldAccessException {
         Class cls = obj.getClass();
         Field[] fields = cls.getDeclaredFields();
-        Map<String, Object> values = new LinkedHashMap<>();
+        List<Property> values = new ArrayList<>();
         for (Field field: fields) {
             field.setAccessible(true);
+            Column columnAnnotation = field.getAnnotation(Column.class);
+            if (columnAnnotation == null) {
+                continue;
+            }
+            String columnName = columnAnnotation.name().isEmpty() ? field.getName() : columnAnnotation.name();
             try {
-                values.put(field.getName(), field.get(obj));
+                boolean isId = field.getAnnotation(Id.class) != null;
+                Property property = new Property(columnName, field.get(obj), isId);
+                values.add(property);
             } catch (IllegalAccessException e) {
-                throw new FieldAccessException("Cannot access field '" + field.getName() + "' in class " + cls.getName());
+                throw new FieldAccessException("Cannot access field '" + columnName + "' in class " + cls.getName());
             }
         }
         return values;
     }
 
-    private String getInsertQuery(String tableName, Map<String, Object> data) {
+    private String getInsertQuery(String tableName, List<Property> data) {
         StringBuilder names = new StringBuilder("(");
         StringBuilder values = new StringBuilder("(");
-        for (String key: data.keySet()) {
-            if (key.equals("id")) {
+        for (Property property: data) {
+            if (property.isPrimaryKey()) {
                 continue;
             }
-            names.append("[").append(key).append("]").append(",");
+            names.append("[").append(property.name()).append("]").append(",");
             values.append("?,");
         }
         names = new StringBuilder(names.substring(0, names.length() - 1));
@@ -319,17 +314,17 @@ public class ReflectivePersistenceManager implements PersistenceManager {
         return "INSERT INTO [" + tableName + "]" + names + " values" + values + ";";
     }
 
-    private String getUpdateQuery(String tableName, Map<String, Object> data) {
+    private String getUpdateQuery(String tableName, List<Property> data) {
         StringBuilder query = new StringBuilder("UPDATE [" + tableName + "] SET ");
 
-        for (String key: data.keySet()) {
-            if (key.equals("id")) {
+        for (Property property: data) {
+            if (property.isPrimaryKey()) {
                 continue;
             }
-            query.append("[").append(key).append("]").append("=?,");
+            query.append("[").append(property.name()).append("]").append("=?,");
         }
         query = new StringBuilder(query.substring(0, query.length() - 1));
-        query.append(" WHERE [id] = ?;");
+        query.append(" WHERE [").append(Util.getPrimaryKeyName(data)).append("] = ?;");
         return query.toString();
     }
 }

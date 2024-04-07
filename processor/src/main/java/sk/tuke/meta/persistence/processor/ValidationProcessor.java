@@ -39,7 +39,6 @@ public class ValidationProcessor extends AbstractProcessor {
                 String script = getScript(element);
                 scripts.add(script);
             }
-            System.out.println(scripts);
             writeTableScriptsToFile(scripts);
             return true;
         }
@@ -48,11 +47,9 @@ public class ValidationProcessor extends AbstractProcessor {
 
     private String getScript(Element element) {
         String query = "";
-        if (element instanceof TypeElement typeElement) {
+        if (element instanceof TypeElement) {
             String tableAnnotationName = element.getAnnotation(Table.class).name();
             String elementName = tableAnnotationName.isEmpty() ? element.getSimpleName().toString() : tableAnnotationName;
-            System.out.println(elementName);
-
             query = "CREATE TABLE IF NOT EXISTS [" + elementName + "]" + getTableScript(element.getEnclosedElements());
         }
         return query;

@@ -32,11 +32,11 @@ public class Main {
         manager.save(hrasko);
 
         List<Person> persons = manager.getAll(Person.class);
-//        for (Person person : persons) {
-//            System.out.println(person);
-//            System.out.println("  " + person.getDepartment());
-//        }
+        for (Person person : persons) {
+            System.out.println(person);
+            System.out.println("  " + person.getDepartment());
+        }
         Optional<Department> anotherDepartment = manager.get(Department.class, 100);
-//        System.out.println(anotherDepartment.isPresent());
+        System.out.println(anotherDepartment.isPresent());
     }
 }

@@ -1,10 +1,17 @@
 package sk.tuke.meta.persistence.util;
 
+import sk.tuke.meta.persistence.model.Property;
 import sk.tuke.meta.persistence.ReflectivePersistenceManager;
+import sk.tuke.meta.persistence.annotations.Id;
+import sk.tuke.meta.persistence.annotations.Table;
 import sk.tuke.meta.persistence.exception.MissedIdException;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Array;
+import java.lang.reflect.Field;
 import java.sql.Connection;
+import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 public class Util {
@@ -20,7 +27,7 @@ public class Util {
         }
     }
 
-    public static Object castToObject(Object obj) throws MissedIdException, NoSuchFieldException, IllegalAccessException {
+    public static Object castToObject(Object obj) throws MissedIdException, IllegalAccessException {
         if (obj == null) {
             return null;
         }
@@ -30,8 +37,7 @@ public class Util {
                 || cls.equals(Character.class)) {
             return obj;
         }
-        Long id = SQLUtil.getObjectIdValue(obj);
-        // TODO add better validation
+        Long id = getObjectIdValue(obj);
         if (id == 0) {
             throw new MissedIdException("Object with type " + getClassNameWithoutPackage(cls) +
                     " has empty id field.");
@@ -63,5 +69,54 @@ public class Util {
             Optional<?> optional = manager.get(type, Long.parseLong(value));
             return optional.orElse(null);
         }
+    }
+
+    public static <T> String getTableName(Class<T> cls) {
+        Table tableAnnotation = cls.getAnnotation(Table.class);
+        return tableAnnotation.name().isEmpty() ? getClassNameWithoutPackage(cls) :
+                tableAnnotation.name();
+    }
+
+    public static boolean containsPrimaryKeyField(List<Property> values) {
+        for (Property property: values) {
+            if (property.isPrimaryKey()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static Object getPrimaryKeyValue(List<Property> values) {
+        for (Property property: values) {
+            if (property.isPrimaryKey()) {
+                return property.value();
+            }
+        }
+        return null;
+    }
+
+    public static String getPrimaryKeyName(List<Property> values) {
+        for (Property property: values) {
+            if (property.isPrimaryKey()) {
+                return property.name();
+            }
+        }
+        return "";
+    }
+
+    public static Field getFieldAnnotatedWith(Object entity, Class<? extends Annotation> annotation) {
+        for (Field field: entity.getClass().getDeclaredFields()) {
+            field.setAccessible(true);
+            if (field.isAnnotationPresent(annotation)) {
+                return field;
+            }
+        }
+        return null;
+    }
+
+    public static Long getObjectIdValue(Object obj) throws IllegalAccessException {
+        Field idField = Objects.requireNonNull(getFieldAnnotatedWith(obj, Id.class));
+        idField.setAccessible(true);
+        return (Long) idField.get(obj);
     }
 }
