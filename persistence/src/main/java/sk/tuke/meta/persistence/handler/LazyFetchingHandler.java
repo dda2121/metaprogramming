@@ -29,10 +29,6 @@ public class LazyFetchingHandler implements InvocationHandler {
 
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-        if (method.getName().equals("toString")
-                || method.getName().equals("equals")
-                || method.getName().equals("hashcode")) return null;
-        System.out.println(method.getName());
         if (targetObj == null) {
             ReflectivePersistenceManager manager = new ReflectivePersistenceManager(connection);
             Optional<?> optional = manager.get(target, targetId);
