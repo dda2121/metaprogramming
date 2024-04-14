@@ -102,6 +102,9 @@ public class ReflectivePersistenceManager implements PersistenceManager {
         try {
             entity = entity instanceof Proxy ? ((LazyFetchingHandler) Proxy.getInvocationHandler(entity)).getTargetObj()
                     : entity;
+            if (entity == null) {
+                return;
+            }
             values = getValues(entity);
         } catch (FieldAccessException e) {
             throw new PersistenceException(e.getMessage());
