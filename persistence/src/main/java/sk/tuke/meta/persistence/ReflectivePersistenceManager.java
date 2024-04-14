@@ -129,17 +129,19 @@ public class ReflectivePersistenceManager implements PersistenceManager {
                 : entity.getClass();
         String tableName = Util.getTableName(cls);
         Long id;
-        entity = entity instanceof Proxy ? ((LazyFetchingHandler) Proxy.getInvocationHandler(entity)).getTargetObj()
-                : entity;
         try {
-            id = getObjectIdValue(entity);
+            // id = getObjectIdValue(entity);
+            id = entity instanceof Proxy ? ((LazyFetchingHandler) Proxy.getInvocationHandler(entity)).getTargetId()
+                    : getObjectIdValue(entity);
             if (id == null || id == 0) {
-                throw new PersistenceException("Object with class type '" + getClassNameWithoutPackage(entity.getClass())
-                        + "' has not set up 'id' field. Not proceeding with deleting.");
+//                throw new PersistenceException("Object with class type '" + getClassNameWithoutPackage(entity.getClass())
+//                        + "' has not set up 'id' field. Not proceeding with deleting.");
+                throw new PersistenceException("Bad id.");
             }
         } catch (IllegalAccessException e) {
-            throw new PersistenceException("Error occurred when accessing 'id' field of an object with class type '"
-                    + getClassNameWithoutPackage(entity.getClass()));
+//            throw new PersistenceException("Error occurred when accessing 'id' field of an object with class type '"
+//                    + getClassNameWithoutPackage(entity.getClass()));
+            throw new PersistenceException("Access error.");
         }
 
         String query = "DELETE FROM [" + tableName + "] WHERE [id] = " + id;

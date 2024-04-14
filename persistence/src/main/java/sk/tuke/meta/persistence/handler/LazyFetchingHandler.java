@@ -48,4 +48,8 @@ public class LazyFetchingHandler implements InvocationHandler {
     public Object getTargetObj() {
         return targetObj;
     }
+
+    public Long getTargetId() {
+        return targetId;
+    }
 }
