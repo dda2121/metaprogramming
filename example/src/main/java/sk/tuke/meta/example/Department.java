@@ -5,7 +5,7 @@ import sk.tuke.meta.persistence.annotations.Id;
 import sk.tuke.meta.persistence.annotations.Table;
 
 @Table
-public class Department {
+public class Department implements IDepartment {
     @Id
     @Column
     private long id;

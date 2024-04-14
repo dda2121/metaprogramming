@@ -6,6 +6,7 @@ import sk.tuke.meta.persistence.annotations.Column;
 import sk.tuke.meta.persistence.annotations.Id;
 import sk.tuke.meta.persistence.exception.FieldAccessException;
 import sk.tuke.meta.persistence.exception.MissedIdException;
+import sk.tuke.meta.persistence.handler.LazyFetchingHandler;
 import sk.tuke.meta.persistence.model.Property;
 import sk.tuke.meta.persistence.util.Util;
 
@@ -15,6 +16,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
 import java.sql.*;
 import java.util.*;
 
@@ -93,9 +95,13 @@ public class ReflectivePersistenceManager implements PersistenceManager {
 
     @Override
     public void save(Object entity) {
-        String tableName = Util.getTableName(entity.getClass());
+        Class<?> cls = entity instanceof Proxy ? ((LazyFetchingHandler) Proxy.getInvocationHandler(entity)).getTarget()
+                : entity.getClass();
+        String tableName = Util.getTableName(cls);
         List<Property> values;
         try {
+            entity = entity instanceof Proxy ? ((LazyFetchingHandler) Proxy.getInvocationHandler(entity)).getTargetObj()
+                    : entity;
             values = getValues(entity);
         } catch (FieldAccessException e) {
             throw new PersistenceException(e.getMessage());
@@ -119,8 +125,12 @@ public class ReflectivePersistenceManager implements PersistenceManager {
 
     @Override
     public void delete(Object entity) {
-        String tableName = Util.getTableName(entity.getClass());
+        Class<?> cls = entity instanceof Proxy ? ((LazyFetchingHandler) Proxy.getInvocationHandler(entity)).getTarget()
+                : entity.getClass();
+        String tableName = Util.getTableName(cls);
         Long id;
+        entity = entity instanceof Proxy ? ((LazyFetchingHandler) Proxy.getInvocationHandler(entity)).getTargetObj()
+                : entity;
         try {
             id = getObjectIdValue(entity);
             if (id == null || id == 0) {
@@ -192,7 +202,7 @@ public class ReflectivePersistenceManager implements PersistenceManager {
             }
             String columnName = columnAnnotation.name().isEmpty() ? f.getName() : columnAnnotation.name();
             String value = rs.getString(columnName);
-            f.set(obj, Util.convertDataType(f.getType(), value, connection));
+            f.set(obj, Util.convertDataType(f, value, connection));
         }
         return obj;
     }

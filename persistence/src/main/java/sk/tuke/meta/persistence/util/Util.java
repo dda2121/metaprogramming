@@ -1,6 +1,7 @@
 package sk.tuke.meta.persistence.util;
 
 import sk.tuke.meta.persistence.annotations.Column;
+import sk.tuke.meta.persistence.handler.LazyFetchingHandler;
 import sk.tuke.meta.persistence.model.Property;
 import sk.tuke.meta.persistence.ReflectivePersistenceManager;
 import sk.tuke.meta.persistence.annotations.Id;
@@ -10,6 +11,7 @@ import sk.tuke.meta.persistence.exception.MissedIdException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.sql.Connection;
 import java.util.List;
 import java.util.Objects;
@@ -46,7 +48,8 @@ public class Util {
         return id;
     }
 
-    public static Object convertDataType(Class<?> type, String value, Connection connection) {
+    public static Object convertDataType(Field field, String value, Connection connection) throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
+        Class<?> type = field.getType();
         if (value == null) {
             if (type.isPrimitive()) {
                 return Array.get(Array.newInstance(type, 1), 0);
@@ -66,9 +69,17 @@ public class Util {
         } else if (type.equals(boolean.class) || type.equals(Boolean.class)) {
             return Boolean.parseBoolean(value);
         } else {
-            ReflectivePersistenceManager manager = new ReflectivePersistenceManager(connection);
-            Optional<?> optional = manager.get(type, Long.parseLong(value));
-            return optional.orElse(null);
+            field.setAccessible(true);
+            Column columnAnnotation = field.getAnnotation(Column.class);
+            boolean lazyFetch = columnAnnotation != null && columnAnnotation.lazyFetch();
+            if (lazyFetch){
+                Class<?> target = columnAnnotation.targetClass();
+                return LazyFetchingHandler.perform(connection, target, Long.parseLong(value));
+            } else {
+                ReflectivePersistenceManager manager = new ReflectivePersistenceManager(connection);
+                Optional<?> optional = manager.get(type, Long.parseLong(value));
+                return optional.orElse(null);
+            }
         }
     }
 
