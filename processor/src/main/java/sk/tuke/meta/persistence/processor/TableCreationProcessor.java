@@ -19,7 +19,7 @@ import java.util.Set;
 
 @SupportedSourceVersion(SourceVersion.RELEASE_19)
 @SupportedAnnotationTypes("sk.tuke.meta.persistence.annotations.*")
-public class ValidationProcessor extends AbstractProcessor {
+public class TableCreationProcessor extends AbstractProcessor {
 
     private ProcessingEnvironment processingEnv;
 

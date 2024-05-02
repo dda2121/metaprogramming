@@ -9,9 +9,9 @@ public class Department implements IDepartment {
     @Id
     @Column
     private long id;
-    @Column
+    @Column(nullable = false, unique = true)
     private String name;
-    @Column
+    @Column(unique = true)
     private String code;
 
     public Department() {

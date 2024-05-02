@@ -1,0 +1,55 @@
+package sk.tuke.meta.persistence.model.dao;
+
+import ${package}.${className};
+import sk.tuke.meta.persistence.PersistenceException;
+import sk.tuke.meta.persistence.PersistenceManager;
+import sk.tuke.meta.persistence.model.DAO;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.util.List;
+import java.util.Optional;
+
+public class ${className}DAO implements DAO<${className}> {
+
+    private final Connection connection;
+    private final PersistenceManager manager;
+
+    public ${className}DAO(Connection connection, PersistenceManager manager) {
+        this.connection = connection;
+        this.manager = manager;
+    }
+
+    @Override
+    public void createTable() {
+
+    }
+
+    @Override
+    public Optional<${className}> get(long id) {
+        return Optional.empty();
+    }
+
+    @Override
+    public List<${className}> getAll() {
+        return null;
+    }
+
+    @Override
+    public void save(Object entity) {
+
+    }
+
+    @Override
+    public void delete(Object entity) {
+        try {
+            PreparedStatement statement = connection.prepareStatement(
+                    "DELETE FROM [${tableName}] WHERE ${idColumnName} = ?;");
+            statement.setLong(1, ((${className}) entity).${idColumnGetter}());
+            statement.executeUpdate();
+        } catch (SQLException e) {
+            throw new PersistenceException(e);
+        }
+    }
+}

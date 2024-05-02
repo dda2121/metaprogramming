@@ -1,0 +1,3 @@
+#set($tableName = $tableData.tableName())
+#set($fields = $tableData.fields())
+CREATE TABLE IF NOT EXISTS ${tableName}(#set($size = $fields.size() - 1)#foreach($i in [0..$size])[$fields[$i].name()] $fields[$i].type()#foreach($additionInfo in $fields[$i].additionalInfo()) ${additionInfo}#end#if($i != $size), #end#end);
