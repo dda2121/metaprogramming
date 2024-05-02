@@ -1,5 +1,6 @@
 package sk.tuke.meta.example;
 
+import sk.tuke.meta.persistence.GeneratedPersistenceManager;
 import sk.tuke.meta.persistence.PersistenceManager;
 import sk.tuke.meta.persistence.ReflectivePersistenceManager;
 
@@ -14,7 +15,11 @@ public class Main {
     public static void main(String[] args) throws Exception {
         Connection conn = DriverManager.getConnection("jdbc:sqlite:" + DB_PATH);
 
-        PersistenceManager manager = new ReflectivePersistenceManager(conn);
+//        PersistenceManager manager = new ReflectivePersistenceManager(conn);
+//
+//        manager.createTables();
+
+        GeneratedPersistenceManager manager = new GeneratedPersistenceManager(conn);
 
         manager.createTables();
 

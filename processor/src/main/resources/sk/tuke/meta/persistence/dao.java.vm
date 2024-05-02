@@ -11,6 +11,12 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
 
+import java.io.InputStream;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.IOException;
+import java.sql.Statement;
+
 public class ${className}DAO implements DAO<${className}> {
 
     private final Connection connection;
@@ -23,7 +29,13 @@ public class ${className}DAO implements DAO<${className}> {
 
     @Override
     public void createTable() {
-
+        ClassLoader classLoader = ${className}DAO.class.getClassLoader();
+        InputStream inputStream = classLoader.getResourceAsStream("${className.toLowerCase()}.sql");
+        if (inputStream != null) {
+            executeScript(inputStream);
+        } else {
+            System.err.println("File not found!");
+        }
     }
 
     @Override
@@ -50,6 +62,22 @@ public class ${className}DAO implements DAO<${className}> {
             statement.executeUpdate();
         } catch (SQLException e) {
             throw new PersistenceException(e);
+        }
+    }
+
+    private void executeScript(InputStream inputStream) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                try {
+                    Statement statement = connection.createStatement();
+                    statement.execute(line);
+                } catch (SQLException e) {
+                    throw new PersistenceException("Error occurred when executing SQL statement: " + e.getMessage(), e);
+                }
+            }
+        } catch (IOException e) {
+            throw new PersistenceException("Error occurred when reading input stream: " + e.getMessage(), e);
         }
     }
 }
