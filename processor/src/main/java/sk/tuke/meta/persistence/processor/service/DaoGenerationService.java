@@ -22,6 +22,7 @@ public class DaoGenerationService extends GenerationService {
             var template = velocity.getTemplate(TEMPLATE_PATH + "dao.java.vm" );
             var context = new VelocityContext();
             context.put("package", tableClass.getEnclosingElement().toString());
+            context.put("tableFields", getColumnFieldsWithSetters(tableClass));
             context.put("className", tableClass.getSimpleName().toString());
             context.put("tableName", parseTableName(tableClass));
             context.put("idColumnName", parseIdColumnName(tableClass));

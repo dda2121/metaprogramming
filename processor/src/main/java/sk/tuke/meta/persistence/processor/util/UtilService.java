@@ -3,10 +3,13 @@ package sk.tuke.meta.persistence.processor.util;
 import sk.tuke.meta.persistence.annotations.Column;
 import sk.tuke.meta.persistence.annotations.Id;
 import sk.tuke.meta.persistence.annotations.Table;
+import sk.tuke.meta.persistence.processor.model.FieldProperty;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.type.TypeMirror;
+import java.util.ArrayList;
+import java.util.List;
 
 public class UtilService {
 
@@ -56,5 +59,31 @@ public class UtilService {
             case "boolean" -> "BOOLEAN";
             default -> "INTEGER";
         };
+    }
+
+    public static List<FieldProperty> getColumnFieldsWithSetters(Element element) {
+        List<FieldProperty> fields = new ArrayList<>();
+        for (Element e : element.getEnclosedElements()) {
+            if (e.getKind() == ElementKind.FIELD && e.getAnnotation(Column.class) != null) {
+                Column columnAnnotation = e.getAnnotation(Column.class);
+                if (columnAnnotation == null) {
+                    if (e.getAnnotation(Id.class) == null) {
+                        continue;
+                    }
+                    String simpleName = e.asType().toString();
+                    simpleName = simpleName.substring(simpleName.lastIndexOf('.') + 1);
+                    fields.add(new FieldProperty(e.getSimpleName().toString(),
+                            capitalizeFirstLetter(e.getSimpleName().toString()),
+                            simpleName));
+                } else {
+                    String simpleName = e.asType().toString();
+                    simpleName = simpleName.substring(simpleName.lastIndexOf('.') + 1);
+                    fields.add(new FieldProperty(columnAnnotation.name().isEmpty() ? e.getSimpleName().toString() : columnAnnotation.name(),
+                            capitalizeFirstLetter(e.getSimpleName().toString()),
+                            simpleName));
+                }
+            }
+        }
+        return fields;
     }
 }

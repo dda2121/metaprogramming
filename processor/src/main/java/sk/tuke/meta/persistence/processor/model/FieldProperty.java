@@ -1,0 +1,3 @@
+package sk.tuke.meta.persistence.processor.model;
+
+public record FieldProperty(String fieldName, String setterName, String typeName) {}
