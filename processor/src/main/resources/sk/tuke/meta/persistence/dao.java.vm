@@ -4,6 +4,11 @@ import ${package}.${simplifiedClassName};
 import sk.tuke.meta.persistence.PersistenceException;
 import sk.tuke.meta.persistence.PersistenceManager;
 import sk.tuke.meta.persistence.model.DAO;
+import sk.tuke.meta.persistence.annotations.Id;
+
+import sk.tuke.meta.persistence.exception.MissedIdException;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Field;
 
 import javax.lang.model.element.Element;
 import java.sql.*;
@@ -12,6 +17,8 @@ import java.util.Optional;
 
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
+import java.util.Objects;
+import sk.tuke.meta.persistence.util.Util;
 
 import java.lang.reflect.InvocationTargetException;
 
@@ -20,6 +27,8 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.IOException;
 import java.sql.Statement;
+
+import sk.tuke.meta.persistence.model.Property;
 
 import sk.tuke.meta.persistence.handler.LazyFetchingHandler;
 
@@ -52,7 +61,7 @@ public class ${simplifiedClassName}DAO implements DAO<${className}> {
             Statement statement = connection.createStatement();
             rs = statement.executeQuery(query);
         } catch (SQLException e) {
-            throw new PersistenceException("Error occurred when retrieving object from a database with class type '${className}'.");
+            throw new PersistenceException("Error occurred when retrieving object from a database with class type '$simplifiedClassName'.");
         }
         try {
             if (rs.next()) {
@@ -73,7 +82,7 @@ public class ${simplifiedClassName}DAO implements DAO<${className}> {
             Statement statement = connection.createStatement();
             rs = statement.executeQuery(query);
         } catch (SQLException e) {
-            throw new PersistenceException("Error occurred when retrieving objects from a database with class type '${className}'.");
+            throw new PersistenceException("Error occurred when retrieving objects from a database with class type '$simplifiedClassName'.");
         }
 
         try {
@@ -89,7 +98,27 @@ public class ${simplifiedClassName}DAO implements DAO<${className}> {
 
     @Override
     public void save(Object entity) {
+        List<Property> values;
+        entity = entity instanceof Proxy ? ((LazyFetchingHandler) Proxy.getInvocationHandler(entity)).getTargetObj()
+                : entity;
+        if (entity == null) {
+            return;
+        }
+        values = getValues(entity);
 
+        if (!Util.containsPrimaryKeyField(values)) {
+            throw new PersistenceException("Provided object with type '$simplifiedClassName' doesn't contain 'id' field");
+        }
+
+        try {
+            if ((Long) Objects.requireNonNull(Util.getPrimaryKeyValue(values)) == 0) {
+                handleInsert(values, entity);
+            } else {
+                handleUpdate(values);
+            }
+        } catch (PersistenceException e) {
+            throw new PersistenceException(e.getMessage());
+        }
     }
 
     @Override
@@ -109,6 +138,113 @@ public class ${simplifiedClassName}DAO implements DAO<${className}> {
         } catch (SQLException e) {
             throw new PersistenceException(e);
         }
+    }
+
+    private void handleInsert(List<Property> values, Object entity) throws PersistenceException {
+        try {
+            long id = insert(values);
+            for (Property p: values) {
+                if (p.isPrimaryKey()) {
+                    (($className) entity).${idColumnSetter}(id);
+                }
+            }
+        } catch (SQLException e) {
+            throw new PersistenceException("Error occurred when inserting row into table '$simplifiedClassName': " + e.getMessage());
+        } catch (NoSuchFieldException e) {
+            throw new PersistenceException("Object with type '$simplifiedClassName' doesn't contain 'id' field");
+        } catch (IllegalAccessException e) {
+            throw new PersistenceException("Error occurred when setting id to newly create object with type '$simplifiedClassName'");
+        } catch (MissedIdException e) {
+            throw new PersistenceException("Error occurred when inserting raw into a table '$simplifiedClassName'. Non primitive object that is behave as FK has not set up ID field");
+        }
+    }
+
+    private void handleUpdate(List<Property> values) throws PersistenceException {
+        try {
+            update(values);
+        } catch (SQLException e) {
+            throw new PersistenceException("Error occurred when updating row in table '$simplifiedClassName': " + e.getMessage());
+        } catch (MissedIdException e) {
+            throw new PersistenceException("Error occurred when inserting raw into a table '$simplifiedClassName'. Non primitive object that is behave as FK has not set up ID field");
+        } catch (NoSuchFieldException e) {
+            throw new PersistenceException("Object with type '$simplifiedClassName' doesn't contain 'id' field");
+        } catch (IllegalAccessException e) {
+            throw new PersistenceException("Error occurred when retrieving 'id' value from object with type '$simplifiedClassName'");
+        }
+    }
+
+    private long insert(List<Property> data) throws SQLException, MissedIdException, NoSuchFieldException, IllegalAccessException {
+        String query = getInsertQuery(data);
+
+        PreparedStatement statement = connection.prepareStatement(query);
+        int i = 1;
+        for (Property property: data) {
+            if (property.isPrimaryKey()) {
+                continue;
+            }
+            statement.setObject(i++, castToObject(property.value(), property.typeName()));
+        }
+        int affectedRows = statement.executeUpdate();
+
+        if (affectedRows == 0) {
+            throw new SQLException("Creating table '$tableName' failed, no rows affected.");
+        }
+
+        try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
+            if (generatedKeys.next()) {
+                return generatedKeys.getLong(1);
+            }
+            else {
+                throw new SQLException("Creating table '$tableName' failed, no ID obtained.");
+            }
+        }
+    }
+
+    private void update(List<Property> values) throws SQLException, MissedIdException, NoSuchFieldException, IllegalAccessException {
+        String query = getUpdateQuery(values);
+
+        PreparedStatement statement = connection.prepareStatement(query);
+        int i = 1;
+        for (Property property: values) {
+            if (property.isPrimaryKey()) {
+                continue;
+            }
+            statement.setObject(i++, castToObject(property.value(), property.typeName()));
+        }
+        statement.setObject(i, castToObject(Util.getPrimaryKeyValue(values), "Long"));
+
+        statement.executeUpdate();
+    }
+
+    private String getInsertQuery(List<Property> data) {
+        StringBuilder names = new StringBuilder("(");
+        StringBuilder values = new StringBuilder("(");
+        for (Property property: data) {
+            if (property.isPrimaryKey()) {
+                continue;
+            }
+            names.append("[").append(property.name()).append("]").append(",");
+            values.append("?,");
+        }
+        names = new StringBuilder(names.substring(0, names.length() - 1));
+        values = new StringBuilder(values.substring(0, values.length() - 1));
+        names.append(")");
+        values.append(")");
+        return "INSERT INTO [$tableName]" + names + " values" + values + ";";
+    }
+
+    private String getUpdateQuery(List<Property> data) {
+        StringBuilder query = new StringBuilder("UPDATE [$tableName] SET ");
+
+        for (Property property: data) {
+            if (property.isPrimaryKey()) {
+                continue;
+            }
+            query.append("[").append(property.name()).append("]").append("=?,");
+        }
+        query = new StringBuilder(query.substring(0, query.length() - 1));
+        query.append(" WHERE [").append(Util.getPrimaryKeyName(data)).append("] = ?;");
+        return query.toString();
     }
 
     private void executeScript(InputStream inputStream) {
@@ -132,15 +268,23 @@ public class ${simplifiedClassName}DAO implements DAO<${className}> {
             return Optional.of(resultSetToObject(rs));
         } catch (SQLException e) {
             throw new PersistenceException("Error processing result set: Please check the validity of the result set " +
-                    "and the provided column label in class '${className}'.");
+                    "and the provided column label in class '$simplifiedClassName'.");
         }
+    }
+
+    private List<Property> getValues(Object obj) {
+        List<Property> values = new ArrayList<>();
+        #foreach($e in $entityFields)
+        values.add(new Property("$e.columnName()", (($className) obj).get$e.fieldName()(), $e.isPrimaryKey(), "$e.typeName()"));
+        #end
+        return values;
     }
 
     private ${className} resultSetToObject(ResultSet rs) throws SQLException {
         ${className} obj = new ${className}();
         #foreach($p in $tableFields)
             #if($p.typeName() == 'long' || $p.typeName() == 'Long' || $p.typeName() == 'byte' || $p.typeName() == 'Byte'
-            || $p.typeName() == 'int' || $p.typeName() == 'Integer' || $p.typeName() == 'char' || $p.typeName() == 'Char'
+            || $p.typeName() == 'int' || $p.typeName() == 'Integer' || $p.typeName() == 'char' || $p.typeName() == 'Character'
             || $p.typeName() == 'boolean' || $p.typeName() == 'Boolean' || $p.typeName() == 'String' || $p.typeName() == 'float'
             || $p.typeName() == 'Float' || $p.typeName() == 'double' || $p.typeName() == 'Double' || $p.typeName() == 'short'
             || $p.typeName() == 'Short')
@@ -154,5 +298,43 @@ public class ${simplifiedClassName}DAO implements DAO<${className}> {
             #end
         #end
         return obj;
+    }
+
+    private Object castToObject(Object obj, String typeName) throws MissedIdException {
+        if (obj == null) {
+            return null;
+        }
+        if (typeName.equals("Integer") || typeName.equals("int") || typeName.equals("Long") || typeName.equals("long")
+                || typeName.equals("Double") || typeName.equals("double") || typeName.equals("Short") || typeName.equals("short")
+                || typeName.equals("Boolean") || typeName.equals("boolean") || typeName.equals("Float") || typeName.equals("float")
+                || typeName.equals("Character") || typeName.equals("char") || typeName.equals("String")) {
+            return obj;
+        }
+        Long id;
+        try {
+            id = getObjectIdValue(obj);
+        } catch (IllegalAccessException e) {
+            throw new PersistenceException(e);
+        }
+        if (id == 0) {
+            throw new MissedIdException("Object has empty id field.");
+        }
+        return id;
+    }
+
+    public static Long getObjectIdValue(Object obj) throws IllegalAccessException {
+        Field idField = Objects.requireNonNull(getFieldAnnotatedWith(obj, Id.class));
+        idField.setAccessible(true);
+        return (Long) idField.get(obj);
+    }
+
+    public static Field getFieldAnnotatedWith(Object entity, Class<? extends Annotation> annotation) {
+        for (Field field: entity.getClass().getDeclaredFields()) {
+            field.setAccessible(true);
+            if (field.isAnnotationPresent(annotation)) {
+                return field;
+            }
+        }
+        return null;
     }
 }

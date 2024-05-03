@@ -3,6 +3,7 @@ package sk.tuke.meta.persistence.processor.util;
 import sk.tuke.meta.persistence.annotations.Column;
 import sk.tuke.meta.persistence.annotations.Id;
 import sk.tuke.meta.persistence.annotations.Table;
+import sk.tuke.meta.persistence.processor.model.EntityFieldProperty;
 import sk.tuke.meta.persistence.processor.model.FieldProperty;
 
 import javax.lang.model.element.Element;
@@ -39,6 +40,16 @@ public class UtilService {
         return "";
     }
 
+    public static String parseIdColumnSetter(Element tableClass) {
+        for (Element e : tableClass.getEnclosedElements()) {
+            if (e.getKind() == ElementKind.FIELD &&
+                    e.getAnnotation(Id.class) != null) {
+                return "set" + capitalizeFirstLetter(e.getSimpleName().toString());
+            }
+        }
+        return "";
+    }
+
     public static String capitalizeFirstLetter(String str) {
         if (str == null || str.isEmpty()) {
             return str;
@@ -65,7 +76,7 @@ public class UtilService {
     public static List<FieldProperty> getColumnFieldsWithSetters(Element element) {
         List<FieldProperty> fields = new ArrayList<>();
         for (Element e : element.getEnclosedElements()) {
-            if (e.getKind() == ElementKind.FIELD && e.getAnnotation(Column.class) != null) {
+            if (e.getKind() == ElementKind.FIELD) {
                 Column columnAnnotation = e.getAnnotation(Column.class);
                 if (columnAnnotation == null) {
                     if (e.getAnnotation(Id.class) == null) {
@@ -92,6 +103,21 @@ public class UtilService {
                             lazyFetch,
                             target));
                 }
+            }
+        }
+        return fields;
+    }
+
+    public static List<EntityFieldProperty> getEntityFields(Element element) {
+        List<EntityFieldProperty> fields = new ArrayList<>();
+        for (Element e : element.getEnclosedElements()) {
+            if (e.getKind() == ElementKind.FIELD && e.getAnnotation(Column.class) != null) {
+                Column columnAnnotation = e.getAnnotation(Column.class);
+                String columnName = columnAnnotation.name().isEmpty() ? e.getSimpleName().toString() : columnAnnotation.name();
+                String fieldName = capitalizeFirstLetter(e.getSimpleName().toString());
+                boolean isPrimaryKey = e.getAnnotation(Id.class) != null;
+                String typeName = e.asType().toString();
+                fields.add(new EntityFieldProperty(columnName, fieldName, isPrimaryKey, typeName));
             }
         }
         return fields;

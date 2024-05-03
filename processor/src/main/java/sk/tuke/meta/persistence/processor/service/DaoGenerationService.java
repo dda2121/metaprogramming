@@ -23,12 +23,14 @@ public class DaoGenerationService extends GenerationService {
             var context = new VelocityContext();
             context.put("package", tableClass.getEnclosingElement().toString());
             context.put("tableFields", getColumnFieldsWithSetters(tableClass));
+            context.put("entityFields", getEntityFields(tableClass));
             context.put("simplifiedClassName", tableClass.getSimpleName().toString());
             context.put("className", tableClass.toString());
             context.put("tableName", parseTableName(tableClass));
             context.put("idColumnName", parseIdColumnName(tableClass));
             // ask about this
             context.put("idColumnGetter", parseIdColumnGetter(tableClass));
+            context.put("idColumnSetter", parseIdColumnSetter(tableClass));
             template.merge(context, out);
         }
     }

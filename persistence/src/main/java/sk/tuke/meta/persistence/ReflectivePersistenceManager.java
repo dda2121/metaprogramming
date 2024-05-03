@@ -303,7 +303,7 @@ public class ReflectivePersistenceManager implements PersistenceManager {
             String columnName = columnAnnotation.name().isEmpty() ? field.getName() : columnAnnotation.name();
             try {
                 boolean isId = field.getAnnotation(Id.class) != null;
-                Property property = new Property(columnName, field.get(obj), isId);
+                Property property = new Property(columnName, field.get(obj), isId, null);
                 values.add(property);
             } catch (IllegalAccessException e) {
                 throw new FieldAccessException("Cannot access field '" + columnName + "' in class " + cls.getName());
