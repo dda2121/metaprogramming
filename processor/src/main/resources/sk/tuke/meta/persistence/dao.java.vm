@@ -121,8 +121,7 @@ public class ${className}DAO implements DAO<${className}> {
                 #if($p.lazyFetch())
         obj.set$p.setterName()(($p.target()) LazyFetchingHandler.perform(connection, ${p.target()}.class, Long.parseLong(rs.getString("$p.fieldName()"))));
                 #else
-        Optional<?> optional = manager.get(${p.typeName()}.class, Long.parseLong(rs.getString("$p.fieldName()")));
-        obj.set$p.setterName()(($p.typeName()) optional.orElse(null));
+        obj.set$p.setterName()(($p.typeName()) manager.get(${p.typeName()}.class, Long.parseLong(rs.getString("$p.fieldName()"))).orElse(null));
                 #end
             #end
         #end

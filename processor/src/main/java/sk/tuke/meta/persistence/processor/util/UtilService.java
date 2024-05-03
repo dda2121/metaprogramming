@@ -80,7 +80,6 @@ public class UtilService {
                             null));
                 } else {
                     String simpleName = e.asType().toString();
-                    simpleName = simpleName.substring(simpleName.lastIndexOf('.') + 1);
                     boolean lazyFetch = false;
                     String target = null;
                     if (columnAnnotation.lazyFetch()) {
