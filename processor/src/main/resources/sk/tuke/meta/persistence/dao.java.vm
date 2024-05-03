@@ -10,6 +10,8 @@ import java.sql.*;
 import java.util.List;
 import java.util.Optional;
 
+import java.util.ArrayList;
+
 import java.lang.reflect.InvocationTargetException;
 
 import java.io.InputStream;
@@ -63,7 +65,25 @@ public class ${className}DAO implements DAO<${className}> {
 
     @Override
     public List<${className}> getAll() {
-        return null;
+        List<${className}> result = new ArrayList<>();
+        String query = "SELECT * FROM [${tableName}]";
+        ResultSet rs;
+        try {
+            Statement statement = connection.createStatement();
+            rs = statement.executeQuery(query);
+        } catch (SQLException e) {
+            throw new PersistenceException("Error occurred when retrieving objects from a database with class type '${className}'.");
+        }
+
+        try {
+            while (rs.next()) {
+                Optional<${className}> optional = processResultSet(rs);
+                optional.ifPresent(result::add);
+            }
+            return result;
+        } catch (PersistenceException | SQLException e) {
+            throw new PersistenceException(e.getMessage());
+        }
     }
 
     @Override
