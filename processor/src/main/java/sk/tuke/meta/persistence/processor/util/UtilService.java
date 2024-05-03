@@ -7,6 +7,7 @@ import sk.tuke.meta.persistence.processor.model.FieldProperty;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
+import javax.lang.model.type.MirroredTypeException;
 import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
 import java.util.List;
@@ -74,16 +75,35 @@ public class UtilService {
                     simpleName = simpleName.substring(simpleName.lastIndexOf('.') + 1);
                     fields.add(new FieldProperty(e.getSimpleName().toString(),
                             capitalizeFirstLetter(e.getSimpleName().toString()),
-                            simpleName));
+                            simpleName,
+                            false,
+                            null));
                 } else {
                     String simpleName = e.asType().toString();
                     simpleName = simpleName.substring(simpleName.lastIndexOf('.') + 1);
+                    boolean lazyFetch = false;
+                    String target = null;
+                    if (columnAnnotation.lazyFetch()) {
+                        lazyFetch = true;
+                        target = getTarget(columnAnnotation);
+                    }
                     fields.add(new FieldProperty(columnAnnotation.name().isEmpty() ? e.getSimpleName().toString() : columnAnnotation.name(),
                             capitalizeFirstLetter(e.getSimpleName().toString()),
-                            simpleName));
+                            simpleName,
+                            lazyFetch,
+                            target));
                 }
             }
         }
         return fields;
+    }
+
+    private static String getTarget(Column column) {
+        try {
+            return column.targetClass().getName();
+        } catch (MirroredTypeException e) {
+            TypeMirror typeMirror = e.getTypeMirror();
+            return typeMirror.toString();
+        }
     }
 }

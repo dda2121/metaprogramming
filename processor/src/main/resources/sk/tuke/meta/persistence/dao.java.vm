@@ -5,8 +5,6 @@ import sk.tuke.meta.persistence.PersistenceException;
 import sk.tuke.meta.persistence.PersistenceManager;
 import sk.tuke.meta.persistence.model.DAO;
 
-import sk.tuke.meta.example.*;
-
 import javax.lang.model.element.Element;
 import java.sql.*;
 import java.util.List;
@@ -19,6 +17,8 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.IOException;
 import java.sql.Statement;
+
+import sk.tuke.meta.persistence.handler.LazyFetchingHandler;
 
 public class ${className}DAO implements DAO<${className}> {
 
@@ -102,36 +102,15 @@ public class ${className}DAO implements DAO<${className}> {
     private Optional<${className}> processResultSet(ResultSet rs) throws PersistenceException {
         try {
             return Optional.of(resultSetToObject(rs));
-        } catch (NoSuchMethodException e) {
-            throw new PersistenceException("Provided object with class type '${className}' doesn't contain empty constructor.");
-        } catch (InvocationTargetException e) {
-            throw new PersistenceException("Error occurred when creating instance of an class '${className}'.");
-        } catch (InstantiationException e) {
-            throw new PersistenceException("Error occurred when creating an instance of an abstract class '${className}'.");
-        } catch (IllegalAccessException e) {
-            throw new PersistenceException("Error occurred due to inaccessible constructor in class '${className}'.");
         } catch (SQLException e) {
             throw new PersistenceException("Error processing result set: Please check the validity of the result set " +
                     "and the provided column label in class '${className}'.");
         }
     }
 
-    private ${className} resultSetToObject(ResultSet rs) throws NoSuchMethodException, InvocationTargetException,
-            InstantiationException, IllegalAccessException, SQLException {
+    private ${className} resultSetToObject(ResultSet rs) throws SQLException {
         ${className} obj = new ${className}();
-##        Field[] fields = type.getDeclaredFields();
-##        for (Field f: fields) {
-##            f.setAccessible(true);
-##            Column columnAnnotation = f.getAnnotation(Column.class);
-##            if (columnAnnotation == null) {
-##                continue;
-##            }
-##            String columnName = columnAnnotation.name().isEmpty() ? f.getName() : columnAnnotation.name();
-##            String value = rs.getString(columnName);
-##            f.set(obj, Util.convertDataType(f, value, connection));
-##        }
         #foreach($p in $tableFields)
-##            Key: $key, Value: $tableFields.get($key)
             #if($p.typeName() == 'long' || $p.typeName() == 'Long' || $p.typeName() == 'byte' || $p.typeName() == 'Byte'
             || $p.typeName() == 'int' || $p.typeName() == 'Integer' || $p.typeName() == 'char' || $p.typeName() == 'Char'
             || $p.typeName() == 'boolean' || $p.typeName() == 'Boolean' || $p.typeName() == 'String' || $p.typeName() == 'float'
@@ -139,44 +118,14 @@ public class ${className}DAO implements DAO<${className}> {
             || $p.typeName() == 'Short')
         obj.set$p.setterName()(($p.typeName()) rs.getObject("$p.fieldName()"));
             #else
-        obj.set$p.setterName()(($p.typeName()) manager.get(${p.typeName()}.class, Long.parseLong(rs.getString("$p.fieldName()"))).orElse(null));
+                #if($p.lazyFetch())
+        obj.set$p.setterName()(($p.target()) LazyFetchingHandler.perform(connection, ${p.target()}.class, Long.parseLong(rs.getString("$p.fieldName()"))));
+                #else
+        Optional<?> optional = manager.get(${p.typeName()}.class, Long.parseLong(rs.getString("$p.fieldName()")));
+        obj.set$p.setterName()(($p.typeName()) optional.orElse(null));
+                #end
             #end
         #end
         return obj;
     }
-
-##    private Object convertDataType(Field field, String value, Connection connection) throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
-##        Class<?> type = field.getType();
-##        if (value == null) {
-##            if (type.isPrimitive()) {
-##                return Array.get(Array.newInstance(type, 1), 0);
-##            } else {
-##                return null;
-##            }
-##        } else if (type.equals(String.class)) {
-##            return value;
-##        } else if (type.equals(int.class) || type.equals(Integer.class)) {
-##            return Integer.parseInt(value);
-##        } else if (type.equals(double.class) || type.equals(Double.class)) {
-##            return Double.parseDouble(value);
-##        } else if (type.equals(float.class) || type.equals(Float.class)) {
-##            return Float.parseFloat(value);
-##        } else if (type.equals(long.class) || type.equals(Long.class)) {
-##            return Long.parseLong(value);
-##        } else if (type.equals(boolean.class) || type.equals(Boolean.class)) {
-##            return Boolean.parseBoolean(value);
-##        } else {
-##            field.setAccessible(true);
-##            Column columnAnnotation = field.getAnnotation(Column.class);
-##            boolean lazyFetch = columnAnnotation != null && columnAnnotation.lazyFetch();
-##            if (lazyFetch){
-##                Class<?> target = columnAnnotation.targetClass();
-##                return LazyFetchingHandler.perform(connection, target, Long.parseLong(value));
-##            } else {
-##                ReflectivePersistenceManager manager = new ReflectivePersistenceManager(connection);
-##                Optional<?> optional = manager.get(type, Long.parseLong(value));
-##                return optional.orElse(null);
-##            }
-##        }
-##    }
 }
