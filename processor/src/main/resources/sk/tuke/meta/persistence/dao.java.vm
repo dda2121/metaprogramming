@@ -1,6 +1,6 @@
 package sk.tuke.meta.persistence.model.dao;
 
-import ${package}.${className};
+import ${package}.${simplifiedClassName};
 import sk.tuke.meta.persistence.PersistenceException;
 import sk.tuke.meta.persistence.PersistenceManager;
 import sk.tuke.meta.persistence.model.DAO;
@@ -10,6 +10,7 @@ import java.sql.*;
 import java.util.List;
 import java.util.Optional;
 
+import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 
 import java.lang.reflect.InvocationTargetException;
@@ -22,20 +23,20 @@ import java.sql.Statement;
 
 import sk.tuke.meta.persistence.handler.LazyFetchingHandler;
 
-public class ${className}DAO implements DAO<${className}> {
+public class ${simplifiedClassName}DAO implements DAO<${className}> {
 
     private final Connection connection;
     private final PersistenceManager manager;
 
-    public ${className}DAO(Connection connection, PersistenceManager manager) {
+    public ${simplifiedClassName}DAO(Connection connection, PersistenceManager manager) {
         this.connection = connection;
         this.manager = manager;
     }
 
     @Override
     public void createTable() {
-        ClassLoader classLoader = ${className}DAO.class.getClassLoader();
-        InputStream inputStream = classLoader.getResourceAsStream("${className.toLowerCase()}.sql");
+        ClassLoader classLoader = ${simplifiedClassName}DAO.class.getClassLoader();
+        InputStream inputStream = classLoader.getResourceAsStream("${simplifiedClassName.toLowerCase()}.sql");
         if (inputStream != null) {
             executeScript(inputStream);
         } else {
@@ -93,10 +94,17 @@ public class ${className}DAO implements DAO<${className}> {
 
     @Override
     public void delete(Object entity) {
+        Long id;
+        id = entity instanceof Proxy ? ((LazyFetchingHandler) Proxy.getInvocationHandler(entity)).getTargetId()
+                : ((${className}) entity).${idColumnGetter}();
+        if (id == null || id == 0) {
+            throw new PersistenceException("Bad id.");
+        }
+
         try {
             PreparedStatement statement = connection.prepareStatement(
                     "DELETE FROM [${tableName}] WHERE ${idColumnName} = ?;");
-            statement.setLong(1, ((${className}) entity).${idColumnGetter}());
+            statement.setLong(1, id);
             statement.executeUpdate();
         } catch (SQLException e) {
             throw new PersistenceException(e);
