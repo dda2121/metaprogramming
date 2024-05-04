@@ -311,7 +311,7 @@ public class ${simplifiedClassName}DAO implements DAO<${className}> {
         if (typeName.equals("Integer") || typeName.equals("int") || typeName.equals("Long") || typeName.equals("long")
                 || typeName.equals("Double") || typeName.equals("double") || typeName.equals("Short") || typeName.equals("short")
                 || typeName.equals("Boolean") || typeName.equals("boolean") || typeName.equals("Float") || typeName.equals("float")
-                || typeName.equals("Character") || typeName.equals("char") || typeName.equals("String")) {
+                || typeName.equals("Character") || typeName.equals("char") || typeName.equals("java.lang.String")) {
             return obj;
         }
         Long id;
