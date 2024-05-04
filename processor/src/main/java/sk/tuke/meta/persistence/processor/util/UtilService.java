@@ -8,6 +8,7 @@ import sk.tuke.meta.persistence.processor.model.FieldProperty;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
+import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.MirroredTypeException;
 import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
@@ -88,24 +89,59 @@ public class UtilService {
                             capitalizeFirstLetter(e.getSimpleName().toString()),
                             simpleName,
                             false,
-                            null));
+                            null,
+                            ""));
                 } else {
                     String simpleName = e.asType().toString();
                     boolean lazyFetch = false;
                     String target = null;
+                    String idFieldName;
                     if (columnAnnotation.lazyFetch()) {
                         lazyFetch = true;
                         target = getTarget(columnAnnotation);
+                        idFieldName = getTargetIdFieldName(columnAnnotation);
+                    } else {
+                        idFieldName = getIdFieldName(e.asType());
                     }
                     fields.add(new FieldProperty(columnAnnotation.name().isEmpty() ? e.getSimpleName().toString() : columnAnnotation.name(),
                             capitalizeFirstLetter(e.getSimpleName().toString()),
                             simpleName,
                             lazyFetch,
-                            target));
+                            target,
+                            idFieldName));
                 }
             }
         }
         return fields;
+    }
+
+    public static String getIdFieldName(TypeMirror typeMirror) {
+        if (typeMirror instanceof DeclaredType declaredType) {
+            Element el = declaredType.asElement();
+            for (Element t : el.getEnclosedElements()) {
+                if (t.getKind() == ElementKind.FIELD && t.getAnnotation(Id.class) != null) {
+                    return capitalizeFirstLetter(t.getSimpleName().toString());
+                }
+            }
+        }
+        return "";
+    }
+
+    public static String getTargetIdFieldName(Column column) {
+        try {
+            return column.targetClass().getName();
+        } catch (MirroredTypeException e) {
+            TypeMirror typeMirror = e.getTypeMirror();
+            if (typeMirror instanceof DeclaredType declaredType) {
+                Element el = declaredType.asElement();
+                for (Element t : el.getEnclosedElements()) {
+                    if (t.getKind() == ElementKind.FIELD && t.getAnnotation(Id.class) != null) {
+                        return capitalizeFirstLetter(t.getSimpleName().toString());
+                    }
+                }
+            }
+            return null;
+        }
     }
 
     public static List<EntityFieldProperty> getEntityFields(Element element) {
