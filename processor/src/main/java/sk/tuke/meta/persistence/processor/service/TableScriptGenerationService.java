@@ -51,7 +51,7 @@ public class TableScriptGenerationService extends GenerationService {
                 String columnType = typeToSQL(e.asType());
                 List<String> additionalInfo = new ArrayList<>();
                 if (e.getAnnotation(Id.class) != null) {
-                    additionalInfo.add("PRIMARY KEY");
+                    additionalInfo.add("PRIMARY KEY AUTOINCREMENT");
                 }
                 if (columnAnnotation.unique()) {
                     additionalInfo.add("UNIQUE");
