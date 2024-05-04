@@ -1,7 +1,9 @@
 package sk.tuke.meta.persistence;
 
+import sk.tuke.meta.persistence.handler.LazyFetchingHandler;
 import sk.tuke.meta.persistence.model.DAO;
 
+import java.lang.reflect.Proxy;
 import java.sql.Connection;
 import java.util.HashMap;
 import java.util.List;
@@ -45,11 +47,21 @@ public abstract class DAOPersistenceManager implements PersistenceManager {
 
     @Override
     public <T> void save(T entity) {
-        getDao(entity.getClass()).save(entity);
+        if (entity instanceof Proxy) {
+            LazyFetchingHandler handler = (LazyFetchingHandler) Proxy.getInvocationHandler(entity);
+            getDao(handler.getTarget()).save(entity);
+        } else {
+            getDao(entity.getClass()).save(entity);
+        }
     }
 
     @Override
     public void delete(Object entity) {
-        getDao(entity.getClass()).delete(entity);
+        if (entity instanceof Proxy) {
+            LazyFetchingHandler handler = (LazyFetchingHandler) Proxy.getInvocationHandler(entity);
+            getDao(handler.getTarget()).delete(entity);
+        } else {
+            getDao(entity.getClass()).delete(entity);
+        }
     }
 }
