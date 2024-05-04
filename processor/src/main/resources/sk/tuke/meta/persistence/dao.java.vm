@@ -285,15 +285,19 @@ public class ${simplifiedClassName}DAO implements DAO<${className}> {
         #foreach($p in $tableFields)
             #if($p.typeName() == 'long' || $p.typeName() == 'Long' || $p.typeName() == 'byte' || $p.typeName() == 'Byte'
             || $p.typeName() == 'int' || $p.typeName() == 'Integer' || $p.typeName() == 'char' || $p.typeName() == 'Character'
-            || $p.typeName() == 'boolean' || $p.typeName() == 'Boolean' || $p.typeName() == 'String' || $p.typeName() == 'float'
+            || $p.typeName() == 'boolean' || $p.typeName() == 'Boolean' || $p.typeName() == 'java.lang.String' || $p.typeName() == 'float'
             || $p.typeName() == 'Float' || $p.typeName() == 'double' || $p.typeName() == 'Double' || $p.typeName() == 'short'
             || $p.typeName() == 'Short')
+                #if ($p.typeName() == 'long')
+        obj.set$p.setterName()((int) rs.getObject("$p.fieldName()"));
+                #else
         obj.set$p.setterName()(($p.typeName()) rs.getObject("$p.fieldName()"));
+                #end
             #else
                 #if($p.lazyFetch())
-        obj.set$p.setterName()(($p.target()) LazyFetchingHandler.perform(connection, ${p.target()}.class, Long.parseLong(rs.getString("$p.fieldName()"))));
+        obj.set$p.setterName()(($p.typeName()) LazyFetchingHandler.perform(connection, ${p.target()}.class, rs.getLong("$p.fieldName()")));
                 #else
-        obj.set$p.setterName()(($p.typeName()) manager.get(${p.typeName()}.class, Long.parseLong(rs.getString("$p.fieldName()"))).orElse(null));
+        obj.set$p.setterName()(($p.typeName()) manager.get(${p.typeName()}.class, rs.getLong("$p.fieldName()")).orElse(null));
                 #end
             #end
         #end
