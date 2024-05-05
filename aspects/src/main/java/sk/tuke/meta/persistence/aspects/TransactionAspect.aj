@@ -1,3 +1,5 @@
+package sk.tuke.meta.persistence.aspects;
+
 import org.aspectj.lang.annotation.Aspect;
 
 import java.sql.Connection;
