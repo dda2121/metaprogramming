@@ -4,6 +4,8 @@ import org.aspectj.lang.annotation.Aspect;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+
+import sk.tuke.meta.persistence.PersistenceException;
 import sk.tuke.meta.persistence.annotations.AtomicPersistenceOperation;
 import sk.tuke.meta.persistence.PersistenceManager;
 
@@ -35,7 +37,7 @@ public aspect TransactionAspect {
                 connection.setAutoCommit(true);
             }
         } catch (SQLException e) {
-            throw new RuntimeException("Error in transaction", e);
+            throw new PersistenceException("Error in transaction", e);
         }
     }
 }
