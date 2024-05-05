@@ -1,6 +1,11 @@
+import org.aspectj.lang.annotation.Aspect;
+
 import java.sql.Connection;
 import java.sql.SQLException;
+import sk.tuke.meta.persistence.annotations.AtomicPersistenceOperation;
+import sk.tuke.meta.persistence.PersistenceManager;
 
+@Aspect
 public aspect TransactionAspect {
 
     private Connection connection;
@@ -24,7 +29,6 @@ public aspect TransactionAspect {
                 connection.commit();
             } catch (Throwable t) {
                 connection.rollback();
-                throw t;
             } finally {
                 connection.setAutoCommit(true);
             }
